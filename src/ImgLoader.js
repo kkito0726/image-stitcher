@@ -1,9 +1,10 @@
 import React from 'react'
 import { ImgSender } from './ImgSender'
+import { v4 as uuidv4 } from 'uuid'
 
 export const ImgLoader = ({path, image}) => {
 
-    const roadImgList = path.map((value, index) => <img src={value} className="readImg" key={index} name="img" />)
+    const roadImgList = path.map((value) => <img src={value} className="readImg" key={uuidv4()} name="img" />)
     
   return (
     <div>
