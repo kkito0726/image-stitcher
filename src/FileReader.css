@@ -1,4 +1,4 @@
-h1 {
+.appTitle {
     font-style: italic;
     padding: 1rem 3rem;
     -webkit-transform: skew(-15deg);

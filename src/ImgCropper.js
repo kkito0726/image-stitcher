@@ -77,7 +77,10 @@ export const ImgCropper = () => {
   return (
     <div className='App'>
       <div className='outerBox'>
-      <h1>無駄な部分をトリミングする</h1>
+      <div className='appTitle'>
+        <h1>無駄な部分をトリミングする</h1>
+      </div>
+     
         <div style={{display: "flex"}}>
           <div className='cropBox'>
             <h2>4. 必要な領域をドラッグで選択する<br />[ 何度でも選択可能 ]</h2>

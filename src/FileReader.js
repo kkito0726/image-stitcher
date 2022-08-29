@@ -37,7 +37,11 @@ export const FileReader = () => {
     return (
         <div className="outerBox">
             <div className="title">
-            <h1>パノラマ合成アプリ ~Stitching App~</h1>
+            <div className='appTitle'>
+                 <h1>パノラマ合成アプリ ~Stitching App~</h1>
+                 <h2>~localhostへ接続~</h2>
+            </div>
+           
             
             </div>
             <div className="imageUplodeBox" id='uploadBox'>
