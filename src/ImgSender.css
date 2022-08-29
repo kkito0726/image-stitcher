@@ -1,0 +1,17 @@
+#modeSelecter {
+  background: #cfcedb;
+  box-shadow: 0px 0px 5px gray;
+  font-size: 16px;
+  border-radius: 5px 5px 5px 5px; 
+  padding       : 5px 5px;
+  border: rgb(241, 248, 253);
+  margin-bottom: 10px;
+}
+
+.descriptionBox{
+  border: 2px dashed gray;
+  border-radius: 5px 5px 5px 5px; 
+  background-color: rgb(241, 248, 253);
+  box-shadow: 0px 0px 10px gray;
+  padding-right: 20px;
+}

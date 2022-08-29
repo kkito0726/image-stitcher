@@ -1,0 +1,98 @@
+h1 {
+    font-style: italic;
+    padding: 1rem 3rem;
+    -webkit-transform: skew(-15deg);
+    transform: skew(-15deg);
+    color: #fff;
+    background-image: -webkit-gradient(linear, left top, right top, from(#209cff), to(#68e0cf));
+    background-image: -webkit-linear-gradient(left, #209cff 0%, #68e0cf 100%);
+    background-image: linear-gradient(to right, #209cff 0%, #68e0cf 100%);
+    border: 1px solid gray;
+  }
+.outerBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: none;
+    padding: 30px;
+    
+  }
+  
+    .imageUplodeBox {
+        box-shadow: 0px 0px 25px gray;
+        border: 2px solid black;
+        padding: 35px 60px;
+        position: relative;
+        background-color: aliceblue;
+        border-radius: 5px 5px 5px 5px;  
+        margin-top: 30px;
+    }
+        #uploadBox:hover{
+            box-shadow: none;
+            background-color: rgb(231, 238, 243);
+        }
+    .readImg {
+        width: 100px;
+        margin-right: 10px;
+        border: 1px solid black;
+        border-radius: 5px 5px 5px 5px; 
+    }
+
+    .stitchedImg {
+        border: 1px solid black;
+        border-radius: 5px 5px 5px 5px; 
+    }
+  
+    .imageLogoAndText  {
+    border: 2px dashed gray;
+    border-radius: 5px 5px 5px 5px; 
+    margin-bottom: 0px;
+  }
+  
+    .imageUploadInput {
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    }
+    .modeList {
+        text-align: left;
+    }
+
+    .button {
+    display       : inline-block;
+    border-radius: 5px 5px 5px 5px;          /* 角丸       */
+    font-size     : 16pt;        /* 文字サイズ */
+    text-align    : center;      /* 文字位置   */
+    cursor        : pointer;     /* カーソル   */
+    padding       : 12px 12px;   /* 余白       */
+    background    : #00b359;     /* 背景色     */
+    color         : #ffffff;     /* 文字色     */
+    line-height   : 1em;         /* 1行の高さ  */
+    transition    : .3s;         /* なめらか変化 */
+    box-shadow    : 6px 6px 3px #666666;  /* 影の設定 */
+    border        : 2px solid #00b359;    /* 枠の指定 */
+    text-decoration: none;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    }
+        .button:hover {
+        box-shadow    : none;        /* カーソル時の影消去 */
+        color         : #00b359;     /* 背景色     */
+        background    : #ffffff;     /* 文字色     */
+        }
+
+        .button#refresh {
+            font-size     : 12pt;   
+            background-color: #209cff;
+            border        : 1px dashed #209cff;  
+        }
+            .button#refresh:hover {
+                box-shadow    : none; 
+                color         : #ffffff; 
+            }

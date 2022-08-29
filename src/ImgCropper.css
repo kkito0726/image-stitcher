@@ -1,0 +1,16 @@
+.cropBox {
+    flex: 1;
+    box-shadow: 0px 0px 25px gray;
+    border: 2px solid black;
+    padding: 20px;
+    position: relative;
+    background-color: aliceblue;
+    border-radius: 5px 5px 5px 5px;  
+    margin: 20px;
+}
+
+#cropImg {
+    border: 1px solid gray;
+    box-shadow: 0px 0px 5px gray;
+    border-radius: 5px 5px 5px 5px; 
+}
