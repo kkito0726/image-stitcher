@@ -16,7 +16,18 @@ export const ImgSender = ({image}) => {
         isRecieved: false
     });
 
+    const initStatus = () => {
+        setIsProcess(false);
+        setStatus({
+            recieveData: null,
+            isStitched: null,
+            isRecieved: false
+        });
+    };
+
     const sendPath = () => {
+        initStatus();
+
         const url = "http://127.0.0.1:5000/stitch";
         const sendData = {
             mode: mode,
@@ -37,7 +48,7 @@ export const ImgSender = ({image}) => {
             setStatus({
                 recieveData: res.data.base64Data,
                 isStitched: res.data.isStitched,
-                isRecieved: !status.isRecieved
+                isRecieved: true
             })
             setIsProcess(false)
         }).catch((err) => {
