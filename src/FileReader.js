@@ -65,7 +65,7 @@ export const FileReader = () => {
                         <input 
                             className="imageUploadInput" 
                             type="file"
-                            accept=".png, .jpeg, .jpg"
+                            accept=".png, .jpeg, .jpg, .tif, .bmp"
                             multiple
                             onInput={onInput}
                         />
