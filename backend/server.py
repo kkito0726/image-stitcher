@@ -5,7 +5,7 @@ import numpy as np
 from stitch import stitch
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app, origins=["http://localhost:3000"])
 
 @app.route("/", methods=['GET'])
 def index():
@@ -48,4 +48,4 @@ def parse():
 
 if __name__ == "__main__":
     app.debug = True
-    app.run(host='127.0.0.1', port=5000)
+    app.run(host='0.0.0.0', port=5000)
