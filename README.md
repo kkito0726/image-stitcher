@@ -15,7 +15,7 @@
 ```bash
 mkdir ~/Workspace
 cd ~/Workspace
-git clone https://github.com/kkito0726/svg_converter.git
+git clone https://github.com/kkito0726/image-stitcher.git
 ```
 
 ### Docker コンテナの起動
