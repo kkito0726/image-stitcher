@@ -1,16 +1,17 @@
-import React from 'react'
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom'
+import React from "react";
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import "./ImgCropper.css"
+import "./ImgCropper.css";
 
-import InitImg from "./initImg.png"
+import InitImg from "./initImg.png";
+import { Topbar } from "./Topbar";
 
 export const ImgCropper = () => {
   const src = useLocation().state;
   const [imageRef, setImageRef] = useState(null);
-  const [crop, setCrop] = useState({unit: "%", width: 30})
+  const [crop, setCrop] = useState({ unit: "%", width: 30 });
   const [croppedImageUrl, setcroppedImageUrl] = useState(InitImg);
 
   const onCropComplete = (crop) => {
@@ -26,7 +27,7 @@ export const ImgCropper = () => {
       );
       setcroppedImageUrl(croppedImageUrl);
     }
-  }
+  };
 
   const getCroppedImg = (image, crop, fileName) => {
     const canvas = document.createElement("canvas");
@@ -62,7 +63,7 @@ export const ImgCropper = () => {
             return;
           }
           blob.name = fileName;
-          
+
           const fileUrl = window.URL.createObjectURL(blob);
           // window.URL.revokeObjectURL(fileUrl);
           resolve(fileUrl);
@@ -71,19 +72,18 @@ export const ImgCropper = () => {
         1
       );
     });
-  }
+  };
 
-    
   return (
-    <div className='App'>
-      <div className='outerBox'>
-      <div className='appTitle'>
-        <h1>無駄な部分をトリミングする</h1>
-      </div>
-     
-        <div style={{display: "flex"}}>
-          <div className='cropBox'>
-            <h2>4. 必要な領域をドラッグで選択する<br />[ 何度でも選択可能 ]</h2>
+    <div className="App">
+      <Topbar />
+      <div className="outerBox">
+        <div className="imageEditor" style={{ display: "flex" }}>
+          <div className="cropBox">
+            <h2>
+              4. 必要な領域をドラッグで選択する
+              <br />[ 何度でも選択可能 ]
+            </h2>
             {src && (
               <ReactCrop
                 src={src}
@@ -91,27 +91,34 @@ export const ImgCropper = () => {
                 ruleOfThirds
                 onImageLoaded={setImageRef}
                 onChange={setCrop}
-                style={{width: "60%"}}
+                style={{ width: "60%" }}
               />
             )}
-            <br />
-            <button type='button' className='button' onClick={() => onCropComplete(crop)}>
+            <button
+              type="button"
+              className="button"
+              onClick={() => onCropComplete(crop)}
+            >
               画像を切り取る
             </button>
           </div>
-          <br />
-          <div className='cropBox'>
+          <div className="cropBox">
             <h2>5. 完成イメージはこちらに表示されます</h2>
             {croppedImageUrl && (
-              <img alt="Crop" style={{ width: "75%" }} src={croppedImageUrl} id="cropImg" />
+              <img
+                alt="Crop"
+                style={{ width: "75%" }}
+                src={croppedImageUrl}
+                id="cropImg"
+              />
             )}
           </div>
         </div>
-        
-          
-          <Link to="/" className='button'>トップページに戻る</Link>
+
+        <Link to="/" className="button">
+          トップページに戻る
+        </Link>
       </div>
-      
     </div>
-  )
-}
+  );
+};
