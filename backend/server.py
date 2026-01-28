@@ -9,12 +9,17 @@ from flask_cors import CORS
 from stitch import stitch
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+CORS(app, origins=["http://localhost:3000", "http://image-stitcher-frontend"])
 
 
 @app.route("/", methods=["GET"])
 def index():
     return "Server!"
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/stitch", methods=["GET", "POST"])

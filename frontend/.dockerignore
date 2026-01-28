@@ -1,4 +1,11 @@
 node_modules
 .next
+out
 .git
 *.log
+.env*
+.DS_Store
+README.md
+.eslintcache
+coverage
+.nyc_output
