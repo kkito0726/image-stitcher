@@ -6,9 +6,10 @@ import { ImgSender } from "./ImgSender";
 interface ImgLoaderProps {
   path: string[];
   image: string[];
+  onCropOnly: (imageSrc: string) => void;
 }
 
-export const ImgLoader = ({ path, image }: ImgLoaderProps) => {
+export const ImgLoader = ({ path, image, onCropOnly }: ImgLoaderProps) => {
   return (
     <div className="space-y-6 fade-in">
       {/* Loaded Images Preview */}
@@ -47,7 +48,7 @@ export const ImgLoader = ({ path, image }: ImgLoaderProps) => {
       </div>
 
       {/* Mode Selector & Send */}
-      <ImgSender image={image} />
+      <ImgSender image={image} path={path} onCropOnly={onCropOnly} />
     </div>
   );
 };

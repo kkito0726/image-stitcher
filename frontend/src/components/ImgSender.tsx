@@ -7,6 +7,8 @@ import { useImageContext } from "@/context/ImageContext";
 
 interface ImgSenderProps {
   image: string[];
+  path: string[];
+  onCropOnly: (imageSrc: string) => void;
 }
 
 interface Status {
@@ -15,7 +17,8 @@ interface Status {
   isRecieved: boolean;
 }
 
-export const ImgSender = ({ image }: ImgSenderProps) => {
+export const ImgSender = ({ image, path, onCropOnly }: ImgSenderProps) => {
+  const isSingleImage = image.length === 1;
   const router = useRouter();
   const { setCropImageSrc } = useImageContext();
   const [mode, setMode] = useState<string>("Scans");
@@ -77,60 +80,27 @@ export const ImgSender = ({ image }: ImgSenderProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Mode Selection Card */}
-      <div className="glass-card-elevated p-6 fade-in">
-        <div className="section-title">
-          <span className="step-badge">2</span>
-          <div>
-            <h2>合成モードを選択</h2>
-            <p>撮影した画像の種類に合わせて選択してください</p>
+      {/* Single Image: Crop Only */}
+      {isSingleImage ? (
+        <div className="glass-card-elevated p-6 fade-in">
+          <div className="section-title">
+            <span className="step-badge">2</span>
+            <div>
+              <h2>トリミング</h2>
+              <p>画像を編集できます</p>
+            </div>
           </div>
-        </div>
 
-        {/* Mode Info */}
-        <div className="info-box mb-5">
-          <ul>
-            <li>
-              <span className="text-[var(--text-primary)] font-medium">スキャンモード</span>
-              <span className="text-[var(--text-muted)]"> — </span>
-              顕微鏡写真など奥行きを考慮しないもの（アフィン投影）
-            </li>
-            <li>
-              <span className="text-[var(--text-primary)] font-medium">パノラマモード</span>
-              <span className="text-[var(--text-muted)]"> — </span>
-              風景写真など奥行きがあるもの（球面投影）
-            </li>
-          </ul>
-        </div>
+          <div className="info-box mb-5">
+            <p>1枚の画像が選択されています。トリミング画面で回転や切り取りができます。</p>
+          </div>
 
-        {/* Select */}
-        <select
-          name="mode"
-          onChange={handleChange}
-          className="select-modern max-w-sm"
-        >
-          <option defaultValue="Scans" value="Scans">
-            スキャンモード
-          </option>
-          <option value="Panorama">パノラマモード</option>
-        </select>
-      </div>
-
-      {/* Action Button */}
-      <div className="text-center">
-        <button
-          type="button"
-          onClick={sendPath}
-          disabled={isProcess}
-          className="btn-primary text-base px-8 py-4"
-        >
-          {isProcess ? (
-            <>
-              <span className="pulse-dot" />
-              処理中...
-            </>
-          ) : (
-            <>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => onCropOnly(path[0])}
+              className="btn-primary text-base px-8 py-4"
+            >
               <svg
                 width="20"
                 height="20"
@@ -141,16 +111,119 @@ export const ImgSender = ({ image }: ImgSenderProps) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
+                <path d="M6 2L6 6L2 6" />
+                <path d="M6 6L12 12" />
+                <path d="M18 22L18 18L22 18" />
+                <path d="M18 18L12 12" />
+                <rect x="8" y="8" width="8" height="8" rx="1" />
               </svg>
-              画像を合成する
-            </>
-          )}
-        </button>
-      </div>
+              トリミングへ進む
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Mode Selection Card */}
+          <div className="glass-card-elevated p-6 fade-in">
+            <div className="section-title">
+              <span className="step-badge">2</span>
+              <div>
+                <h2>合成モードを選択</h2>
+                <p>撮影した画像の種類に合わせて選択してください</p>
+              </div>
+            </div>
+
+            {/* Mode Info */}
+            <div className="info-box mb-5">
+              <ul>
+                <li>
+                  <span className="text-[var(--text-primary)] font-medium">スキャンモード</span>
+                  <span className="text-[var(--text-muted)]"> — </span>
+                  顕微鏡写真など奥行きを考慮しないもの（アフィン投影）
+                </li>
+                <li>
+                  <span className="text-[var(--text-primary)] font-medium">パノラマモード</span>
+                  <span className="text-[var(--text-muted)]"> — </span>
+                  風景写真など奥行きがあるもの（球面投影）
+                </li>
+              </ul>
+            </div>
+
+            {/* Select */}
+            <select
+              name="mode"
+              onChange={handleChange}
+              className="select-modern max-w-sm"
+            >
+              <option defaultValue="Scans" value="Scans">
+                スキャンモード
+              </option>
+              <option value="Panorama">パノラマモード</option>
+            </select>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={sendPath}
+              disabled={isProcess}
+              className="btn-primary text-base px-8 py-4"
+            >
+              {isProcess ? (
+                <>
+                  <span className="pulse-dot" />
+                  処理中...
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  画像を合成する
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onCropOnly(path[0])}
+              disabled={isProcess}
+              className="btn-secondary text-base px-6 py-4"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M6 2L6 6L2 6" />
+                <path d="M6 6L12 12" />
+                <path d="M18 22L18 18L22 18" />
+                <path d="M18 18L12 12" />
+                <rect x="8" y="8" width="8" height="8" rx="1" />
+              </svg>
+              トリミングのみ（1枚目）
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Processing Indicator */}
       {isProcess && (
