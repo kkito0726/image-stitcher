@@ -47,7 +47,7 @@ export const FileUploader = () => {
           <div className="border-2 border-dashed border-[#aaa] rounded-lg mb-0">
             <p className="mt-4">JpegかPngの画像ファイル</p>
             <Image
-              src="/fileImage.png"
+              src="/fileImage.svg"
               alt="imagelogo"
               width={64}
               height={64}
