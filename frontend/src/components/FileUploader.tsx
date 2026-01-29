@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, ChangeEvent } from "react";
-import Image from "next/image";
+import { useState, ChangeEvent, useRef } from "react";
 import { Topbar } from "./Topbar";
 import { ImgLoader } from "./ImgLoader";
 
@@ -9,9 +8,15 @@ export const FileUploader = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [path, setPath] = useState<string[]>([]);
   const [dataUrl, setDataUrl] = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    processFiles(files);
+  };
+
+  const processFiles = (files: FileList | null) => {
     if (files && files.length > 0) {
       const dataURLs: string[] = [];
       const filesPath: string[] = [];
@@ -35,57 +40,192 @@ export const FileUploader = () => {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    processFiles(e.dataTransfer.files);
+  };
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[var(--bg-void)]">
       <Topbar />
 
-      <div className="flex flex-col items-center justify-center text-center p-8 bg-[#2a2a2a] shadow-lg rounded-lg m-5 text-[#f0f0f0] min-h-[88vh]">
-        <div
-          className="shadow-lg border-2 border-[#333] py-9 px-15 relative bg-[#2a2a2a] rounded-lg mt-8 text-[#f0f0f0] hover:shadow-none hover:bg-[#3a3a3a] transition-all"
-        >
-          <h2 className="text-xl font-bold mb-4">1. フォルダから画像を選択</h2>
-          <div className="border-2 border-dashed border-[#aaa] rounded-lg mb-0">
-            <p className="mt-4">JpegかPngの画像ファイル</p>
-            <Image
-              src="/fileImage.svg"
-              alt="imagelogo"
-              width={64}
-              height={64}
-              className="mx-auto my-2"
-            />
-            <p className="mb-4">ここにドラッグ＆ドロップ</p>
-          </div>
-          <input
-            className="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer"
-            multiple
-            name="imageURL"
-            type="file"
-            accept=".png, .jpeg, .jpg"
-            onChange={handleFileChange}
-          />
-          <p className="my-4">または</p>
-          <button className="relative inline-block rounded-lg text-base text-center cursor-pointer py-3 px-3 bg-[#444] text-[#f0f0f0] transition-all duration-300 shadow border-2 border-[#333] hover:shadow-none hover:bg-[#555] hover:text-white">
-            画像ファイルを選択
-            <input
-              className="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer"
-              type="file"
-              accept=".png, .jpeg, .jpg, .tif, .bmp"
-              multiple
-              onChange={handleFileChange}
-            />
-          </button>
+      <main className="max-w-4xl mx-auto px-6 py-10">
+        {/* Hero Section */}
+        <div className="text-center mb-10 fade-in">
+          <h1 className="text-3xl font-semibold text-[var(--text-primary)] mb-3 tracking-tight">
+            Panorama Image Stitcher
+          </h1>
+          <p className="text-[var(--text-secondary)] text-base max-w-lg mx-auto">
+            複数の画像を自動で合成し、美しいパノラマ写真を作成します
+          </p>
         </div>
 
-        {loading && <ImgLoader path={path} image={dataUrl} />}
+        {/* Upload Card */}
+        <div className="glass-card-elevated p-8 fade-in" style={{ animationDelay: "0.1s" }}>
+          {/* Step 1 Header */}
+          <div className="section-title">
+            <span className="step-badge">1</span>
+            <div>
+              <h2>画像をアップロード</h2>
+              <p>JPEGまたはPNG形式の画像を選択してください</p>
+            </div>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="inline-block rounded-lg text-sm text-center cursor-pointer py-3 px-3 bg-[#555] text-[#f0f0f0] transition-all duration-300 shadow border border-dashed border-[#333] mt-8 hover:shadow-none hover:text-white"
-        >
-          はじめからやり直す
-        </button>
-      </div>
+          {/* Dropzone */}
+          <div
+            className={`dropzone text-center transition-all ${
+              isDragOver ? "border-[var(--accent-primary)] bg-[var(--accent-glow)]" : ""
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={handleButtonClick}
+          >
+            {/* Icon */}
+            <div className="dropzone-icon mx-auto">
+              <svg
+                viewBox="0 0 64 64"
+                fill="none"
+                className="w-full h-full"
+              >
+                <rect
+                  x="8"
+                  y="14"
+                  width="28"
+                  height="20"
+                  rx="3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-[var(--accent-primary)]"
+                  opacity="0.5"
+                />
+                <rect
+                  x="28"
+                  y="20"
+                  width="28"
+                  height="20"
+                  rx="3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-[var(--accent-primary)]"
+                />
+                <rect
+                  x="18"
+                  y="30"
+                  width="28"
+                  height="20"
+                  rx="3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-[var(--accent-secondary)]"
+                  opacity="0.7"
+                />
+                <path
+                  d="M32 44V56M32 56L26 50M32 56L38 50"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-[var(--text-muted)]"
+                />
+              </svg>
+            </div>
+
+            <p className="text-[var(--text-primary)] font-medium mb-2">
+              ここにファイルをドロップ
+            </p>
+            <p className="text-[var(--text-muted)] text-sm mb-6">
+              または
+            </p>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleButtonClick();
+              }}
+              className="btn-primary"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              画像を選択
+            </button>
+
+            <input
+              ref={fileInputRef}
+              className="hidden"
+              multiple
+              name="imageURL"
+              type="file"
+              accept=".png, .jpeg, .jpg"
+              onChange={handleFileChange}
+            />
+          </div>
+
+          {/* File format hint */}
+          <p className="text-center text-[var(--text-muted)] text-xs mt-4">
+            対応形式: JPEG, PNG / 複数選択可
+          </p>
+        </div>
+
+        {/* Loaded Images Section */}
+        {loading && (
+          <div className="mt-8 fade-in">
+            <ImgLoader path={path} image={dataUrl} />
+          </div>
+        )}
+
+        {/* Reset Button */}
+        <div className="text-center mt-10 fade-in" style={{ animationDelay: "0.2s" }}>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="btn-ghost"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            はじめからやり直す
+          </button>
+        </div>
+      </main>
     </div>
   );
 };
