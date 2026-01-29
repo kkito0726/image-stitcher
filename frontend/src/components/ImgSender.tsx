@@ -8,6 +8,7 @@ import { useImageContext } from "@/context/ImageContext";
 interface ImgSenderProps {
   image: string[];
   path: string[];
+  selectedIndex: number;
   onCropOnly: (imageSrc: string) => void;
 }
 
@@ -17,7 +18,7 @@ interface Status {
   isRecieved: boolean;
 }
 
-export const ImgSender = ({ image, path, onCropOnly }: ImgSenderProps) => {
+export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
   const isSingleImage = image.length === 1;
   const router = useRouter();
   const { setCropImageSrc } = useImageContext();
@@ -98,7 +99,7 @@ export const ImgSender = ({ image, path, onCropOnly }: ImgSenderProps) => {
           <div className="text-center">
             <button
               type="button"
-              onClick={() => onCropOnly(path[0])}
+              onClick={() => onCropOnly(path[selectedIndex])}
               className="btn-primary text-base px-8 py-4"
             >
               <svg
@@ -199,7 +200,7 @@ export const ImgSender = ({ image, path, onCropOnly }: ImgSenderProps) => {
 
             <button
               type="button"
-              onClick={() => onCropOnly(path[0])}
+              onClick={() => onCropOnly(path[selectedIndex])}
               disabled={isProcess}
               className="btn-secondary text-base px-6 py-4"
             >
@@ -219,7 +220,7 @@ export const ImgSender = ({ image, path, onCropOnly }: ImgSenderProps) => {
                 <path d="M18 18L12 12" />
                 <rect x="8" y="8" width="8" height="8" rx="1" />
               </svg>
-              トリミングのみ（1枚目）
+              トリミングのみ（{selectedIndex + 1}枚目）
             </button>
           </div>
         </>
