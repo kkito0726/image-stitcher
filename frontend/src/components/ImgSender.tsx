@@ -38,7 +38,7 @@ export const ImgSender = ({ image }: ImgSenderProps) => {
   const sendPath = () => {
     initStatus();
 
-    const url = "http://127.0.0.1:5003/stitch";
+    const url = "/api/stitch";
     const sendData = {
       mode: mode,
       image: image,

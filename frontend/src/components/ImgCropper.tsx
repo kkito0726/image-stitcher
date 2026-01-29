@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import ReactCrop, { type Crop } from "react-image-crop";
 import { Topbar } from "./Topbar";
 
@@ -18,7 +19,7 @@ export const ImgCropper = ({ src }: ImgCropperProps) => {
     x: 0,
     y: 0,
   });
-  const [croppedImageUrl, setCroppedImageUrl] = useState<string>("/initImg.png");
+  const [croppedImageUrl, setCroppedImageUrl] = useState<string | null>(null);
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
@@ -124,12 +125,24 @@ export const ImgCropper = ({ src }: ImgCropperProps) => {
             <h2 className="text-lg font-bold mb-4">
               5. 完成イメージはこちらに表示されます
             </h2>
-            {croppedImageUrl && (
+            {croppedImageUrl ? (
               <img
                 alt="Crop"
                 className="max-w-[75%] border border-[#ccc] shadow rounded-lg"
                 src={croppedImageUrl}
               />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-[#888] py-8">
+                <Image
+                  src="/cropPlaceholder.svg"
+                  alt="placeholder"
+                  width={120}
+                  height={120}
+                  className="mb-4 opacity-60"
+                />
+                <p className="text-sm">左の画像で領域を選択し</p>
+                <p className="text-sm">「画像を切り取る」ボタンを押してください</p>
+              </div>
             )}
           </div>
         </div>
