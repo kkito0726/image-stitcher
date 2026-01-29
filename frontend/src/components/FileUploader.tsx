@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, ChangeEvent, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Topbar } from "./Topbar";
 import { ImgLoader } from "./ImgLoader";
+import { useImageContext } from "@/context/ImageContext";
 
 export const FileUploader = () => {
+  const router = useRouter();
+  const { setCropImageSrc } = useImageContext();
   const [loading, setLoading] = useState<boolean>(false);
   const [path, setPath] = useState<string[]>([]);
   const [dataUrl, setDataUrl] = useState<string[]>([]);
@@ -58,6 +62,11 @@ export const FileUploader = () => {
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleCropOnly = (imageSrc: string) => {
+    setCropImageSrc(imageSrc);
+    router.push("/crop");
   };
 
   return (
@@ -198,7 +207,7 @@ export const FileUploader = () => {
         {/* Loaded Images Section */}
         {loading && (
           <div className="mt-8 fade-in">
-            <ImgLoader path={path} image={dataUrl} />
+            <ImgLoader path={path} image={dataUrl} onCropOnly={handleCropOnly} />
           </div>
         )}
 
