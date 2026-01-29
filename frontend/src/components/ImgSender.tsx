@@ -19,7 +19,7 @@ interface Status {
 }
 
 export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
-  const isSingleImage = image.length === 1;
+  const isSingleImage = path.length === 1;
   const router = useRouter();
   const { setCropImageSrc } = useImageContext();
   const [mode, setMode] = useState<string>("Scans");
@@ -226,8 +226,8 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
         </>
       )}
 
-      {/* Processing Indicator */}
-      {isProcess && (
+      {/* Processing Indicator (multiple images only) */}
+      {!isSingleImage && isProcess && (
         <div className="fade-in">
           <div className="glass-card p-6 text-center">
             <div className="flex flex-col items-center gap-4">
@@ -251,8 +251,8 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
         </div>
       )}
 
-      {/* Success Result */}
-      {status.isRecieved && status.isStitched === 0 && (
+      {/* Success Result (multiple images only) */}
+      {!isSingleImage && status.isRecieved && status.isStitched === 0 && (
         <div className="glass-card-elevated p-6 scale-in">
           <div className="section-title">
             <span className="step-badge">3</span>
@@ -322,8 +322,8 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
         </div>
       )}
 
-      {/* Error Result */}
-      {status.isRecieved && status.isStitched === 1 && (
+      {/* Error Result (multiple images only) */}
+      {!isSingleImage && status.isRecieved && status.isStitched === 1 && (
         <div className="glass-card p-6 border-red-500/20 scale-in">
           <div className="section-title mb-4">
             <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center">
