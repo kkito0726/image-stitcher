@@ -349,17 +349,7 @@ export const ImgCropper = ({ src }: ImgCropperProps) => {
                     `,
                     backgroundSize: "10% 10%",
                   }}
-                >
-                  {/* 中央の十字線（より目立つ） */}
-                  <div
-                    className="absolute left-1/2 top-0 bottom-0 w-px"
-                    style={{ backgroundColor: "rgba(74, 222, 128, 0.6)" }}
-                  />
-                  <div
-                    className="absolute top-1/2 left-0 right-0 h-px"
-                    style={{ backgroundColor: "rgba(74, 222, 128, 0.6)" }}
-                  />
-                </div>
+                />
               )}
               {rotatedImageUrl && (
                 <div
