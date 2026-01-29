@@ -29,6 +29,8 @@ export const ImgCropper = ({ src }: ImgCropperProps) => {
   const [rotatedImageUrl, setRotatedImageUrl] = useState<string>(src);
   // 画像生成中フラグ
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  // グリッド表示フラグ
+  const [showGrid, setShowGrid] = useState<boolean>(true);
 
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -316,11 +318,47 @@ export const ImgCropper = ({ src }: ImgCropperProps) => {
               </div>
             </div>
 
+            {/* グリッド表示切り替え */}
+            <div className="mb-4">
+              <label className="flex items-center justify-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showGrid}
+                  onChange={(e) => setShowGrid(e.target.checked)}
+                  className="w-4 h-4 accent-[#4ade80]"
+                />
+                <span className="text-sm">ガイド線を表示</span>
+              </label>
+            </div>
+
             {/* 画像プレビュー・クロップエリア */}
             <div className="relative">
               {isGenerating && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10 rounded-lg">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20 rounded-lg">
                   <span className="text-white">処理中...</span>
+                </div>
+              )}
+              {/* グリッドオーバーレイ（回転しない） */}
+              {showGrid && (
+                <div
+                  className="absolute inset-0 pointer-events-none z-10"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(to right, rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255, 255, 255, 0.3) 1px, transparent 1px)
+                    `,
+                    backgroundSize: "10% 10%",
+                  }}
+                >
+                  {/* 中央の十字線（より目立つ） */}
+                  <div
+                    className="absolute left-1/2 top-0 bottom-0 w-px"
+                    style={{ backgroundColor: "rgba(74, 222, 128, 0.6)" }}
+                  />
+                  <div
+                    className="absolute top-1/2 left-0 right-0 h-px"
+                    style={{ backgroundColor: "rgba(74, 222, 128, 0.6)" }}
+                  />
                 </div>
               )}
               {rotatedImageUrl && (
