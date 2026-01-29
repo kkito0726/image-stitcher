@@ -1,6 +1,8 @@
 services:
   image-stitcher-backend:
-    image: ghcr.io/kkito0726/image-stitcher-backend:latest
+    build:
+      context: ./backend
+      target: production
     restart: unless-stopped
     networks:
       - backend
@@ -22,7 +24,9 @@ services:
           memory: 256M
 
   image-stitcher-frontend:
-    image: ghcr.io/kkito0726/image-stitcher-frontend:latest
+    build:
+      context: ./frontend
+      target: production
     restart: unless-stopped
     ports:
       - "3000:80"
