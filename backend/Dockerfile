@@ -32,8 +32,11 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
+# ワーカーは 1 本。合成結果のプロセス内メモリキャッシュ (ダウンロード用) は
+# ワーカー間で共有されないため、複数ワーカーだと download が別ワーカーに当たって
+# 取り出せなくなる。同時リクエストは uvicorn worker のスレッドプールで捌く。
 CMD ["gunicorn", "src.main:app", \
      "-k", "uvicorn.workers.UvicornWorker", \
-     "-w", "2", \
+     "-w", "1", \
      "-b", "0.0.0.0:5000", \
      "--timeout", "300"]
