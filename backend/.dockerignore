@@ -10,3 +10,8 @@ README.md
 .coverage
 venv
 .venv
+tests
+.gitignore
+.ruff_cache
+.mypy_cache
+*.egg-info

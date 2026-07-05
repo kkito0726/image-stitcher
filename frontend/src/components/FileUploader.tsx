@@ -11,35 +11,19 @@ export const FileUploader = () => {
   const { setCropImageSrc } = useImageContext();
   const [loading, setLoading] = useState<boolean>(false);
   const [path, setPath] = useState<string[]>([]);
-  const [dataUrl, setDataUrl] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    processFiles(files);
+    processFiles(e.target.files);
   };
 
-  const processFiles = (files: FileList | null) => {
-    if (files && files.length > 0) {
-      const dataURLs: string[] = [];
-      const filesPath: string[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        filesPath.push(window.URL.createObjectURL(files[i]));
-
-        const reader = new FileReader();
-        reader.readAsDataURL(files[i]);
-
-        reader.onload = (e) => {
-          const str = e.target?.result as string;
-          if (str) {
-            dataURLs.push(str.substr(str.indexOf(",") + 1));
-          }
-        };
-      }
-      setDataUrl(dataURLs);
-      setPath(filesPath);
+  const processFiles = (fileList: FileList | null) => {
+    if (fileList && fileList.length > 0) {
+      const selected = Array.from(fileList);
+      setFiles(selected);
+      setPath(selected.map((file) => window.URL.createObjectURL(file)));
       setLoading(true);
     }
   };
@@ -207,7 +191,7 @@ export const FileUploader = () => {
         {/* Loaded Images Section */}
         {loading && (
           <div className="mt-8 fade-in">
-            <ImgLoader path={path} image={dataUrl} onCropOnly={handleCropOnly} />
+            <ImgLoader path={path} files={files} onCropOnly={handleCropOnly} />
           </div>
         )}
 

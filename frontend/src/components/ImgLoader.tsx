@@ -5,11 +5,11 @@ import { ImgSender } from "./ImgSender";
 
 interface ImgLoaderProps {
   path: string[];
-  image: string[];
+  files: File[];
   onCropOnly: (imageSrc: string) => void;
 }
 
-export const ImgLoader = ({ path, image, onCropOnly }: ImgLoaderProps) => {
+export const ImgLoader = ({ path, files, onCropOnly }: ImgLoaderProps) => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const isMultiple = path.length > 1;
 
@@ -78,7 +78,7 @@ export const ImgLoader = ({ path, image, onCropOnly }: ImgLoaderProps) => {
 
       {/* Mode Selector & Send */}
       <ImgSender
-        image={image}
+        files={files}
         path={path}
         selectedIndex={selectedIndex}
         onCropOnly={onCropOnly}

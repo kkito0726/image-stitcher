@@ -6,66 +6,63 @@ import axios from "axios";
 import { useImageContext } from "@/context/ImageContext";
 
 interface ImgSenderProps {
-  image: string[];
+  files: File[];
   path: string[];
   selectedIndex: number;
   onCropOnly: (imageSrc: string) => void;
 }
 
-interface Status {
-  recieveData: string | null;
-  isStitched: number | null;
-  isRecieved: boolean;
-}
+type StitchState =
+  | { phase: "idle" }
+  | { phase: "processing" }
+  | { phase: "success"; resultUrl: string }
+  | { phase: "failed"; reason: string }
+  | { phase: "error"; message: string };
 
-export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
+const toErrorState = async (err: unknown): Promise<StitchState> => {
+  if (axios.isAxiosError(err) && err.response) {
+    const { status, data } = err.response;
+    try {
+      const text = data instanceof Blob ? await data.text() : JSON.stringify(data);
+      const body = JSON.parse(text);
+      if (status === 422) {
+        return { phase: "failed", reason: body.reason ?? "unknown" };
+      }
+      if (typeof body.error === "string") {
+        return { phase: "error", message: body.error };
+      }
+    } catch {
+      // JSON でないレスポンスはステータスコードのみ表示する
+    }
+    return { phase: "error", message: `サーバーエラーが発生しました (${status})` };
+  }
+  return { phase: "error", message: "サーバーに接続できませんでした" };
+};
+
+export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
   const isSingleImage = path.length === 1;
   const router = useRouter();
   const { setCropImageSrc } = useImageContext();
   const [mode, setMode] = useState<string>("Scans");
-  const [isProcess, setIsProcess] = useState<boolean>(false);
-  const [status, setStatus] = useState<Status>({
-    recieveData: null,
-    isStitched: null,
-    isRecieved: false,
-  });
+  const [state, setState] = useState<StitchState>({ phase: "idle" });
+  const isProcess = state.phase === "processing";
 
-  const initStatus = () => {
-    setIsProcess(false);
-    setStatus({
-      recieveData: null,
-      isStitched: null,
-      isRecieved: false,
-    });
-  };
+  const sendFiles = async () => {
+    if (state.phase === "success") {
+      URL.revokeObjectURL(state.resultUrl);
+    }
+    setState({ phase: "processing" });
 
-  const sendPath = () => {
-    initStatus();
+    const formData = new FormData();
+    formData.append("mode", mode);
+    files.forEach((file) => formData.append("images", file));
 
-    const url = "/api/stitch";
-    const sendData = {
-      mode: mode,
-      image: image,
-    };
-    setIsProcess(true);
-    axios
-      .post(url, sendData, {
-        headers: {
-          "content-type": "application/json",
-        },
-      })
-      .then((res) => {
-        setStatus({
-          recieveData: res.data.base64Data,
-          isStitched: res.data.isStitched,
-          isRecieved: true,
-        });
-        setIsProcess(false);
-      })
-      .catch((err) => {
-        console.log(err);
-        setIsProcess(false);
-      });
+    try {
+      const res = await axios.post("/api/stitch", formData, { responseType: "blob" });
+      setState({ phase: "success", resultUrl: URL.createObjectURL(res.data) });
+    } catch (err) {
+      setState(await toErrorState(err));
+    }
   };
 
   const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -73,8 +70,8 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
   };
 
   const handleNavigateToCrop = () => {
-    if (status.recieveData) {
-      setCropImageSrc(`data:image/png;base64,${status.recieveData}`);
+    if (state.phase === "success") {
+      setCropImageSrc(state.resultUrl);
       router.push("/crop");
     }
   };
@@ -167,7 +164,7 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               type="button"
-              onClick={sendPath}
+              onClick={sendFiles}
               disabled={isProcess}
               className="btn-primary text-base px-8 py-4"
             >
@@ -252,7 +249,7 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
       )}
 
       {/* Success Result (multiple images only) */}
-      {!isSingleImage && status.isRecieved && status.isStitched === 0 && (
+      {!isSingleImage && state.phase === "success" && (
         <div className="glass-card-elevated p-6 scale-in">
           <div className="section-title">
             <span className="step-badge">3</span>
@@ -264,13 +261,11 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
 
           {/* Result Preview */}
           <div className="result-image-container mb-6">
-            {status.recieveData && (
-              <img
-                src={`data:image/png;base64,${status.recieveData}`}
-                alt="stitched"
-                className="result-image w-full"
-              />
-            )}
+            <img
+              src={state.resultUrl}
+              alt="stitched"
+              className="result-image w-full"
+            />
           </div>
 
           {/* Action Buttons */}
@@ -298,7 +293,7 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
               トリミングする
             </button>
             <a
-              href={`data:image/png;base64,${status.recieveData}`}
+              href={state.resultUrl}
               download="stitched-image.png"
               className="btn-secondary"
             >
@@ -322,8 +317,8 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
         </div>
       )}
 
-      {/* Error Result (multiple images only) */}
-      {!isSingleImage && status.isRecieved && status.isStitched === 1 && (
+      {/* Stitch Failure (multiple images only) */}
+      {!isSingleImage && state.phase === "failed" && (
         <div className="glass-card p-6 border-red-500/20 scale-in">
           <div className="section-title mb-4">
             <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -358,6 +353,34 @@ export const ImgSender = ({ image, path, selectedIndex, onCropOnly }: ImgSenderP
               画像の重なり合う部分（のりしろ）を増やして撮影し直してみてください。
               目安として、隣り合う画像の30%以上が重なるようにすると成功率が上がります。
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Generic Error (multiple images only) */}
+      {!isSingleImage && state.phase === "error" && (
+        <div className="glass-card p-6 border-red-500/20 scale-in">
+          <div className="section-title mb-4">
+            <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-red-400">エラーが発生しました</h2>
+              <p>{state.message}</p>
+            </div>
           </div>
         </div>
       )}
