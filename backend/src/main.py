@@ -1,14 +1,17 @@
 import logging
+import time
 
 import uvicorn
 from fastapi import FastAPI
 
 from src.config import Settings
 from src.domain.models import StitchMode
+from src.infra.cache.in_memory_result_cache import InMemoryResultCache
 from src.infra.opencv.cv_codec import CvImageCodec
 from src.infra.opencv.cv_stitcher import CvImageStitcher
 from src.infra.opencv.sample_images import make_overlapping_tiles
 from src.presentation.app import create_app
+from src.usecase.get_stitch_result import GetStitchResultUseCase
 from src.usecase.stitch_images import StitchImagesUseCase
 
 logger = logging.getLogger(__name__)
@@ -25,8 +28,26 @@ def _warmup(usecase: StitchImagesUseCase) -> None:
 
 def create_application() -> FastAPI:
     settings = Settings.from_env()
-    usecase = StitchImagesUseCase(codec=CvImageCodec(), stitcher=CvImageStitcher())
-    return create_app(usecase=usecase, settings=settings, warmup=lambda: _warmup(usecase))
+    codec = CvImageCodec()
+    cache = InMemoryResultCache(
+        ttl_seconds=settings.cache_ttl_seconds,
+        max_entries=settings.cache_max_entries,
+        clock=time.monotonic,
+    )
+    stitch_usecase = StitchImagesUseCase(
+        codec=codec,
+        stitcher=CvImageStitcher(),
+        cache=cache,
+        preview_max_width=settings.preview_max_width,
+        preview_quality=settings.preview_quality,
+    )
+    get_result_usecase = GetStitchResultUseCase(codec=codec, cache=cache)
+    return create_app(
+        stitch_usecase=stitch_usecase,
+        get_result_usecase=get_result_usecase,
+        settings=settings,
+        warmup=lambda: _warmup(stitch_usecase),
+    )
 
 
 app = create_application()

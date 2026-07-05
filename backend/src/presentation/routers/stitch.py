@@ -21,7 +21,10 @@ def _bad_request(message: str) -> JSONResponse:
 @router.post(
     "/stitch",
     responses={
-        200: {"content": {"image/png": {}}, "description": "合成画像 (PNG バイナリ)"},
+        200: {
+            "content": {"image/jpeg": {}},
+            "description": "プレビュー JPEG。X-Result-Id ヘッダーにフル解像度の取得 ID を返す",
+        },
         400: {"model": ErrorResponse, "description": "リクエスト不正"},
         422: {"model": StitchFailureResponse, "description": "合成失敗 (特徴点不足など)"},
         500: {"model": ErrorResponse, "description": "内部エラー"},
@@ -34,7 +37,7 @@ def stitch(
 ) -> Response:
     # CPU バウンド処理のため同期エンドポイントとし、FastAPI のスレッドプールで実行させる
     settings: Settings = request.app.state.settings
-    usecase: StitchImagesUseCase = request.app.state.usecase
+    usecase: StitchImagesUseCase = request.app.state.stitch_usecase
 
     if len(images) > settings.max_images:
         return _bad_request(f"画像は最大 {settings.max_images} 枚までです")
@@ -54,7 +57,12 @@ def stitch(
     except ImageDecodeError as exc:
         return _bad_request(str(exc))
 
-    if output.png is None:
+    if output.preview_jpeg is None or output.result_id is None:
         failure = output.failure or StitchFailureReason.NEED_MORE_IMAGES
         return JSONResponse(status_code=422, content={"isStitched": 1, "reason": failure.value})
-    return Response(content=output.png, media_type="image/png")
+
+    return Response(
+        content=output.preview_jpeg,
+        media_type="image/jpeg",
+        headers={"X-Result-Id": output.result_id},
+    )

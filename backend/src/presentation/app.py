@@ -9,14 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.config import Settings
-from src.presentation.routers import health, stitch
+from src.presentation.routers import download, health, stitch
+from src.usecase.get_stitch_result import GetStitchResultUseCase
 from src.usecase.stitch_images import StitchImagesUseCase
 
 logger = logging.getLogger(__name__)
 
 
 def create_app(
-    usecase: StitchImagesUseCase,
+    stitch_usecase: StitchImagesUseCase,
+    get_result_usecase: GetStitchResultUseCase,
     settings: Settings,
     warmup: Callable[[], None] | None = None,
 ) -> FastAPI:
@@ -30,7 +32,8 @@ def create_app(
         yield
 
     app = FastAPI(title="image-stitcher-backend", lifespan=lifespan)
-    app.state.usecase = usecase
+    app.state.stitch_usecase = stitch_usecase
+    app.state.get_result_usecase = get_result_usecase
     app.state.settings = settings
 
     app.add_middleware(
@@ -38,10 +41,13 @@ def create_app(
         allow_origins=list(settings.allowed_origins),
         allow_methods=["*"],
         allow_headers=["*"],
+        # JS からフル解像度取得 ID を読めるようにする
+        expose_headers=["X-Result-Id"],
     )
 
     app.include_router(health.router)
     app.include_router(stitch.router)
+    app.include_router(download.router)
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(

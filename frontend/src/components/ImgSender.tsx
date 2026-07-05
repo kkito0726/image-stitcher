@@ -15,9 +15,11 @@ interface ImgSenderProps {
 type StitchState =
   | { phase: "idle" }
   | { phase: "processing" }
-  | { phase: "success"; resultUrl: string }
+  | { phase: "success"; previewUrl: string; resultId: string }
   | { phase: "failed"; reason: string }
   | { phase: "error"; message: string };
+
+const PASSWORD_STORAGE_KEY = "downloadPassword";
 
 const toErrorState = async (err: unknown): Promise<StitchState> => {
   if (axios.isAxiosError(err) && err.response) {
@@ -39,18 +41,39 @@ const toErrorState = async (err: unknown): Promise<StitchState> => {
   return { phase: "error", message: "サーバーに接続できませんでした" };
 };
 
+const saveBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+const requestFullImage = (resultId: string, password: string | null) => {
+  const headers: Record<string, string> = {};
+  if (password) headers["X-Download-Password"] = password;
+  return axios.get(`/api/stitch/${resultId}/download`, {
+    responseType: "blob",
+    headers,
+  });
+};
+
 export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
   const isSingleImage = path.length === 1;
   const router = useRouter();
   const { setCropImageSrc } = useImageContext();
   const [mode, setMode] = useState<string>("Scans");
   const [state, setState] = useState<StitchState>({ phase: "idle" });
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const isProcess = state.phase === "processing";
 
   const sendFiles = async () => {
     if (state.phase === "success") {
-      URL.revokeObjectURL(state.resultUrl);
+      URL.revokeObjectURL(state.previewUrl);
     }
+    setDownloadError(null);
     setState({ phase: "processing" });
 
     const formData = new FormData();
@@ -59,7 +82,8 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
 
     try {
       const res = await axios.post("/api/stitch", formData, { responseType: "blob" });
-      setState({ phase: "success", resultUrl: URL.createObjectURL(res.data) });
+      const resultId = res.headers["x-result-id"];
+      setState({ phase: "success", previewUrl: URL.createObjectURL(res.data), resultId });
     } catch (err) {
       setState(await toErrorState(err));
     }
@@ -71,8 +95,44 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
 
   const handleNavigateToCrop = () => {
     if (state.phase === "success") {
-      setCropImageSrc(state.resultUrl);
+      // トリミングは表示用プレビュー(縮小版)に対して行う
+      setCropImageSrc(state.previewUrl);
       router.push("/crop");
+    }
+  };
+
+  const handleDownload = async () => {
+    if (state.phase !== "success") return;
+    setDownloadError(null);
+    setIsDownloading(true);
+    try {
+      let password = sessionStorage.getItem(PASSWORD_STORAGE_KEY);
+      let res;
+      try {
+        res = await requestFullImage(state.resultId, password);
+      } catch (err) {
+        // パスワード保護が有効な本番環境では最初の試行が 401 になる
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          password = window.prompt("フル解像度のダウンロードにはパスワードが必要です") || "";
+          if (!password) return; // ユーザーがキャンセル
+          res = await requestFullImage(state.resultId, password);
+          sessionStorage.setItem(PASSWORD_STORAGE_KEY, password);
+        } else {
+          throw err;
+        }
+      }
+      saveBlob(res.data, "stitched-image.png");
+    } catch (err) {
+      sessionStorage.removeItem(PASSWORD_STORAGE_KEY);
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setDownloadError("パスワードが違います。もう一度お試しください。");
+      } else if (axios.isAxiosError(err) && err.response?.status === 404) {
+        setDownloadError("画像の有効期限が切れました。もう一度合成してください。");
+      } else {
+        setDownloadError("ダウンロードに失敗しました。");
+      }
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -260,13 +320,16 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
           </div>
 
           {/* Result Preview */}
-          <div className="result-image-container mb-6">
+          <div className="result-image-container mb-3">
             <img
-              src={state.resultUrl}
+              src={state.previewUrl}
               alt="stitched"
               className="result-image w-full"
             />
           </div>
+          <p className="text-center text-[var(--text-muted)] text-xs mb-6">
+            表示画像は軽量化した縮小版です。フル解像度は「ダウンロード」から取得できます。
+          </p>
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -292,28 +355,42 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
               </svg>
               トリミングする
             </button>
-            <a
-              href={state.resultUrl}
-              download="stitched-image.png"
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={isDownloading}
               className="btn-secondary"
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              ダウンロード
-            </a>
+              {isDownloading ? (
+                <>
+                  <span className="pulse-dot" />
+                  ダウンロード中...
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  ダウンロード
+                </>
+              )}
+            </button>
           </div>
+
+          {downloadError && (
+            <p className="text-center text-red-400 text-sm mt-4">{downloadError}</p>
+          )}
         </div>
       )}
 

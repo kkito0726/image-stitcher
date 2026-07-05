@@ -45,3 +45,32 @@ class TestCvImageCodec:
         codec = CvImageCodec()
         with pytest.raises(ImageDecodeError):
             codec.decode(b"")
+
+    def test_プレビューは幅を上限まで縮小する(self) -> None:
+        codec = CvImageCodec()
+        wide = CvImage(mat=_sample_mat(width=4000, height=2000))
+
+        jpeg = codec.encode_preview_jpeg(wide, max_width=1920, quality=80)
+        decoded = codec.decode(jpeg)
+
+        assert decoded.width == 1920
+        assert decoded.height == 960  # アスペクト比を保つ
+
+    def test_プレビューは上限より小さい画像を拡大しない(self) -> None:
+        codec = CvImageCodec()
+        small = CvImage(mat=_sample_mat(width=800, height=600))
+
+        jpeg = codec.encode_preview_jpeg(small, max_width=1920, quality=80)
+        decoded = codec.decode(jpeg)
+
+        assert decoded.width == 800
+        assert decoded.height == 600
+
+    def test_プレビューjpegはフルpngより小さい(self) -> None:
+        codec = CvImageCodec()
+        image = CvImage(mat=_sample_mat(width=4000, height=2000))
+
+        preview = codec.encode_preview_jpeg(image, max_width=1920, quality=80)
+        full = codec.encode_png(image)
+
+        assert len(preview) < len(full)
