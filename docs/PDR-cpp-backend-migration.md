@@ -1,6 +1,6 @@
 # PDR: バックエンドの C++ 移行（単一バイナリ化）
 
-- ステータス: Draft
+- ステータス: **保留（Deferred）** — 事前実測（§9.1）により C++ 移行単体のレイテンシ改善が 1.1〜1.2 倍にとどまると判明したため、[Python 近代化案](./PDR-python-backend-modernization.md)を先行する。再開トリガーは同文書 §11 を参照
 - 作成日: 2026-07-05
 - 対象: `backend/`（Flask + opencv-python）→ C++ 単一バイナリへの置き換え
 
