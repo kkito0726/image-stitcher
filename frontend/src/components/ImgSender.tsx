@@ -19,8 +19,6 @@ type StitchState =
   | { phase: "failed"; reason: string }
   | { phase: "error"; message: string };
 
-const PASSWORD_STORAGE_KEY = "downloadPassword";
-
 const toErrorState = async (err: unknown): Promise<StitchState> => {
   if (axios.isAxiosError(err) && err.response) {
     const { status, data } = err.response;
@@ -50,14 +48,8 @@ const saveBlob = (blob: Blob, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const requestFullImage = (resultId: string, password: string | null) => {
-  const headers: Record<string, string> = {};
-  if (password) headers["X-Download-Password"] = password;
-  return axios.get(`/api/stitch/${resultId}/download`, {
-    responseType: "blob",
-    headers,
-  });
-};
+const requestFullImage = (resultId: string) =>
+  axios.get(`/api/stitch/${resultId}/download`, { responseType: "blob" });
 
 export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
   const isSingleImage = path.length === 1;
@@ -106,27 +98,10 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
     setDownloadError(null);
     setIsDownloading(true);
     try {
-      let password = sessionStorage.getItem(PASSWORD_STORAGE_KEY);
-      let res;
-      try {
-        res = await requestFullImage(state.resultId, password);
-      } catch (err) {
-        // パスワード保護が有効な本番環境では最初の試行が 401 になる
-        if (axios.isAxiosError(err) && err.response?.status === 401) {
-          password = window.prompt("フル解像度のダウンロードにはパスワードが必要です") || "";
-          if (!password) return; // ユーザーがキャンセル
-          res = await requestFullImage(state.resultId, password);
-          sessionStorage.setItem(PASSWORD_STORAGE_KEY, password);
-        } else {
-          throw err;
-        }
-      }
+      const res = await requestFullImage(state.resultId);
       saveBlob(res.data, "stitched-image.png");
     } catch (err) {
-      sessionStorage.removeItem(PASSWORD_STORAGE_KEY);
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        setDownloadError("パスワードが違います。もう一度お試しください。");
-      } else if (axios.isAxiosError(err) && err.response?.status === 404) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
         setDownloadError("画像の有効期限が切れました。もう一度合成してください。");
       } else {
         setDownloadError("ダウンロードに失敗しました。");

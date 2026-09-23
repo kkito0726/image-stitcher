@@ -96,19 +96,6 @@ class TestStitchAndDownloadIntegration:
         res = _real_client().get("/stitch/unknown-id/download")
         assert res.status_code == 404
 
-    def test_パスワード保護下では正しいパスワードでのみダウンロードできる(self) -> None:
-        client = _real_client(Settings(download_password="s3cret"))
-        tiles = make_overlapping_tiles()
-        res = client.post("/stitch", data={"mode": "Scans"}, files=_as_files(tiles))
-        result_id = res.headers["x-result-id"]
-
-        assert client.get(f"/stitch/{result_id}/download").status_code == 401
-        ok = client.get(
-            f"/stitch/{result_id}/download", headers={"X-Download-Password": "s3cret"}
-        )
-        assert ok.status_code == 200
-        assert ok.headers["content-type"] == "image/png"
-
     def test_warmupを指定するとlifespanで実行される(self) -> None:
         calls: list[bool] = []
         settings = Settings()

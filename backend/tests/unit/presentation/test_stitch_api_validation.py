@@ -144,36 +144,6 @@ class TestDownloadEndpoint:
         assert res.status_code == 404
         assert "error" in res.json()
 
-    def test_パスワード未設定時はヘッダーなしでダウンロードできる(self) -> None:
-        res = _client(
-            get_result_usecase=FakeGetResultUseCase(png=b"full-png"), settings=Settings()
-        ).get("/stitch/rid/download")
-        assert res.status_code == 200
-
-    def test_パスワード設定時に正しいパスワードなら成功(self) -> None:
-        get_uc = FakeGetResultUseCase(png=b"full-png")
-        res = _client(get_result_usecase=get_uc, settings=Settings(download_password="s3cret")).get(
-            "/stitch/rid/download", headers={"X-Download-Password": "s3cret"}
-        )
-        assert res.status_code == 200
-        assert res.content == b"full-png"
-
-    def test_パスワード設定時にヘッダーなしは401(self) -> None:
-        get_uc = FakeGetResultUseCase(png=b"full-png")
-        res = _client(get_result_usecase=get_uc, settings=Settings(download_password="s3cret")).get(
-            "/stitch/rid/download"
-        )
-        assert res.status_code == 401
-        assert get_uc.received_id is None  # 検証失敗時はキャッシュに触れない
-
-    def test_パスワード設定時に誤ったパスワードは401(self) -> None:
-        get_uc = FakeGetResultUseCase(png=b"full-png")
-        res = _client(get_result_usecase=get_uc, settings=Settings(download_password="s3cret")).get(
-            "/stitch/rid/download", headers={"X-Download-Password": "wrong"}
-        )
-        assert res.status_code == 401
-        assert get_uc.received_id is None
-
 
 class TestHealthEndpoints:
     def test_health(self) -> None:
