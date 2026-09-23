@@ -1,0 +1,90 @@
+# 自宅サーバー (Raspberry Pi 5 / Intel N100 等) + Cloudflare Tunnel での公開用構成
+#
+#   インターネット → Cloudflare → cloudflared → frontend(nginx) ─┬─ /      静的ファイル
+#                                                                 └─ /api/  → backend
+#
+# ホストのポートは一切公開しない (外部からの入口は cloudflared のアウトバウンド接続のみ)。
+# 機種ごとのリソース設定は .env で切り替える (.env.deploy.example を参照)。
+#
+#   cp .env.deploy.example .env   # TUNNEL_TOKEN 等を設定
+#   docker compose -f docker-compose.deploy.yml up -d
+
+services:
+  image-stitcher-backend:
+    image: ghcr.io/kkito0726/image-stitcher-backend:latest
+    restart: unless-stopped
+    networks:
+      - backend
+    expose:
+      - "5000"
+    environment:
+      STITCH_MAX_IMAGES: ${STITCH_MAX_IMAGES:-30}
+      RESULT_CACHE_MAX_ENTRIES: ${RESULT_CACHE_MAX_ENTRIES:-4}
+      RESULT_CACHE_TTL_SECONDS: ${RESULT_CACHE_TTL_SECONDS:-600}
+      DOWNLOAD_JPEG_QUALITY: ${DOWNLOAD_JPEG_QUALITY:-95}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: ${BACKEND_CPUS:-2.0}
+          memory: ${BACKEND_MEMORY:-2G}
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  image-stitcher-frontend:
+    image: ghcr.io/kkito0726/image-stitcher-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      image-stitcher-backend:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    # トンネルの Public Hostname は Cloudflare ダッシュボードで
+    # http://image-stitcher-frontend:80 に向ける
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?TUNNEL_TOKEN を .env に設定してください}
+    depends_on:
+      image-stitcher-frontend:
+        condition: service_healthy
+    networks:
+      - frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
