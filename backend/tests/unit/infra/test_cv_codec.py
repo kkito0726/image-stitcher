@@ -66,6 +66,21 @@ class TestCvImageCodec:
         assert decoded.width == 800
         assert decoded.height == 600
 
+    def test_フルjpegは縮小せず元の解像度を保つ(self) -> None:
+        codec = CvImageCodec()
+        image = CvImage(mat=_sample_mat(width=4000, height=2000))
+
+        decoded = codec.decode(codec.encode_jpeg(image, quality=95))
+
+        assert decoded.width == 4000
+        assert decoded.height == 2000
+
+    def test_フルjpegは画質が高いほど大きい(self) -> None:
+        codec = CvImageCodec()
+        image = CvImage(mat=_sample_mat(width=400, height=300))
+
+        assert len(codec.encode_jpeg(image, quality=95)) > len(codec.encode_jpeg(image, quality=50))
+
     def test_プレビューjpegはフルpngより小さい(self) -> None:
         codec = CvImageCodec()
         image = CvImage(mat=_sample_mat(width=4000, height=2000))

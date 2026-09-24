@@ -8,6 +8,7 @@ _DEFAULT_PREVIEW_MAX_WIDTH = 1920
 _DEFAULT_PREVIEW_QUALITY = 80
 _DEFAULT_CACHE_TTL_SECONDS = 600
 _DEFAULT_CACHE_MAX_ENTRIES = 4
+_DEFAULT_DOWNLOAD_JPEG_QUALITY = 95
 
 
 def _int_env(name: str, default: int) -> int:
@@ -36,6 +37,7 @@ class Settings:
     preview_quality: int = _DEFAULT_PREVIEW_QUALITY
     cache_ttl_seconds: int = _DEFAULT_CACHE_TTL_SECONDS
     cache_max_entries: int = _DEFAULT_CACHE_MAX_ENTRIES
+    download_jpeg_quality: int = _DEFAULT_DOWNLOAD_JPEG_QUALITY
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -54,4 +56,5 @@ class Settings:
             preview_quality=_int_env("PREVIEW_QUALITY", _DEFAULT_PREVIEW_QUALITY),
             cache_ttl_seconds=_int_env("RESULT_CACHE_TTL_SECONDS", _DEFAULT_CACHE_TTL_SECONDS),
             cache_max_entries=_int_env("RESULT_CACHE_MAX_ENTRIES", _DEFAULT_CACHE_MAX_ENTRIES),
+            download_jpeg_quality=_int_env("DOWNLOAD_JPEG_QUALITY", _DEFAULT_DOWNLOAD_JPEG_QUALITY),
         )

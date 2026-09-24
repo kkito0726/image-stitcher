@@ -17,6 +17,10 @@ class ImageCodec(Protocol):
         """フル解像度のロスレス PNG にエンコードする。"""
         ...
 
+    def encode_jpeg(self, image: DecodedImage, quality: int) -> bytes:
+        """フル解像度のまま非可逆 JPEG にエンコードする。"""
+        ...
+
     def encode_preview_jpeg(self, image: DecodedImage, max_width: int, quality: int) -> bytes:
         """表示用に縮小した非可逆 JPEG にエンコードする。
 

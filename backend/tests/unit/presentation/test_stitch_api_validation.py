@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from src.config import Settings
 from src.domain.errors import ImageDecodeError
-from src.domain.models import StitchFailureReason
+from src.domain.models import DownloadFormat, StitchFailureReason
 from src.presentation.app import create_app
 from src.usecase.stitch_images import StitchImagesOutput
 
@@ -29,9 +29,11 @@ class FakeGetResultUseCase:
     def __init__(self, png: bytes | None = None):
         self._png = png
         self.received_id: str | None = None
+        self.received_format: DownloadFormat | None = None
 
-    def execute(self, result_id: str) -> bytes | None:
+    def execute(self, result_id: str, fmt: DownloadFormat = DownloadFormat.JPEG) -> bytes | None:
         self.received_id = result_id
+        self.received_format = fmt
         return self._png
 
 
@@ -128,14 +130,31 @@ class TestStitchEndpoint:
 
 
 class TestDownloadEndpoint:
-    def test_存在する結果はフルpngを返す(self) -> None:
-        get_uc = FakeGetResultUseCase(png=b"full-png")
+    def test_形式指定なしはjpegを返す(self) -> None:
+        get_uc = FakeGetResultUseCase(png=b"full-image")
         res = _client(get_result_usecase=get_uc).get("/stitch/rid-123/download")
 
         assert res.status_code == 200
-        assert res.headers["content-type"] == "image/png"
-        assert res.content == b"full-png"
+        assert res.headers["content-type"] == "image/jpeg"
+        assert res.content == b"full-image"
         assert get_uc.received_id == "rid-123"
+        assert get_uc.received_format == DownloadFormat.JPEG
+
+    def test_format_pngならpngを返す(self) -> None:
+        get_uc = FakeGetResultUseCase(png=b"full-image")
+        res = _client(get_result_usecase=get_uc).get("/stitch/rid-123/download?format=png")
+
+        assert res.status_code == 200
+        assert res.headers["content-type"] == "image/png"
+        assert get_uc.received_format == DownloadFormat.PNG
+
+    def test_未対応のformatは400(self) -> None:
+        get_uc = FakeGetResultUseCase(png=b"full-image")
+        res = _client(get_result_usecase=get_uc).get("/stitch/rid-123/download?format=gif")
+
+        assert res.status_code == 400
+        assert "format" in res.json()["error"]
+        assert get_uc.received_id is None
 
     def test_存在しない結果は404(self) -> None:
         res = _client(get_result_usecase=FakeGetResultUseCase(png=None)).get(

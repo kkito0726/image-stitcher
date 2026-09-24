@@ -29,6 +29,9 @@ class CvImageCodec:
             raise RuntimeError("PNG エンコードに失敗しました")
         return bytes(buffer.tobytes())
 
+    def encode_jpeg(self, image: DecodedImage, quality: int) -> bytes:
+        return _encode_jpeg_mat(require_cv_image(image).mat, quality)
+
     def encode_preview_jpeg(self, image: DecodedImage, max_width: int, quality: int) -> bytes:
         mat = require_cv_image(image).mat
         width = mat.shape[1]
@@ -39,7 +42,11 @@ class CvImageCodec:
                 npt.NDArray[np.uint8],
                 cv2.resize(mat, new_size, interpolation=cv2.INTER_AREA),
             )
-        ok, buffer = cv2.imencode(".jpg", mat, [cv2.IMWRITE_JPEG_QUALITY, quality])
-        if not ok:
-            raise RuntimeError("JPEG エンコードに失敗しました")
-        return bytes(buffer.tobytes())
+        return _encode_jpeg_mat(mat, quality)
+
+
+def _encode_jpeg_mat(mat: npt.NDArray[np.uint8], quality: int) -> bytes:
+    ok, buffer = cv2.imencode(".jpg", mat, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    if not ok:
+        raise RuntimeError("JPEG エンコードに失敗しました")
+    return bytes(buffer.tobytes())

@@ -71,6 +71,8 @@ Request:
   Header: X-Download-Password: <password>   (Settings.download_password 設定時のみ必須)
 
 200 image/png (フル解像度バイナリ)
+
+> **2026-09-25 変更**: 既定を `image/jpeg`(フル解像度・q95、`DOWNLOAD_JPEG_QUALITY` で調整可)とし、`?format=png` 指定時のみロスレス PNG を返す。普段使いのエンコード負荷と転送量を抑え、定量解析など無劣化が必要な場合だけ PNG を選ぶ運用とする。未対応の format は 400。
 401 {"error": "パスワードが違います"}          (パスワード必須時のみ発生)
 404 {"error": "結果が見つからないか有効期限切れです"}
 ```

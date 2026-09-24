@@ -53,7 +53,10 @@ def create_app(
     async def handle_validation_error(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        message = "リクエストが不正です: mode と images (multipart/form-data) が必要です"
+        if request.url.path.endswith("/download"):
+            message = "リクエストが不正です: format には jpeg か png を指定してください"
+        else:
+            message = "リクエストが不正です: mode と images (multipart/form-data) が必要です"
         return JSONResponse(status_code=400, content={"error": message})
 
     @app.exception_handler(Exception)

@@ -48,8 +48,16 @@ const saveBlob = (blob: Blob, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const requestFullImage = (resultId: string) =>
-  axios.get(`/api/stitch/${resultId}/download`, { responseType: "blob" });
+// 既定は軽量な JPEG。無劣化が必要な場合のみ PNG を明示的に選ぶ
+type DownloadFormat = "jpeg" | "png";
+
+const DOWNLOAD_EXTENSIONS: Record<DownloadFormat, string> = { jpeg: "jpg", png: "png" };
+
+const requestFullImage = (resultId: string, format: DownloadFormat) =>
+  axios.get(`/api/stitch/${resultId}/download`, {
+    params: { format },
+    responseType: "blob",
+  });
 
 export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderProps) => {
   const isSingleImage = path.length === 1;
@@ -93,13 +101,13 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (format: DownloadFormat) => {
     if (state.phase !== "success") return;
     setDownloadError(null);
     setIsDownloading(true);
     try {
-      const res = await requestFullImage(state.resultId);
-      saveBlob(res.data, "stitched-image.png");
+      const res = await requestFullImage(state.resultId, format);
+      saveBlob(res.data, `stitched-image.${DOWNLOAD_EXTENSIONS[format]}`);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         setDownloadError("画像の有効期限が切れました。もう一度合成してください。");
@@ -332,7 +340,7 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
             </button>
             <button
               type="button"
-              onClick={handleDownload}
+              onClick={() => handleDownload("jpeg")}
               disabled={isDownloading}
               className="btn-secondary"
             >
@@ -357,9 +365,19 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
                     <polyline points="7 10 12 15 17 10" />
                     <line x1="12" y1="15" x2="12" y2="3" />
                   </svg>
-                  ダウンロード
+                  ダウンロード (JPEG)
                 </>
               )}
+            </button>
+          </div>
+          <div className="text-center mt-3">
+            <button
+              type="button"
+              onClick={() => handleDownload("png")}
+              disabled={isDownloading}
+              className="text-xs text-[var(--text-muted)] underline hover:text-[var(--text-primary)] disabled:opacity-50"
+            >
+              無劣化の PNG でダウンロード (ファイルサイズ大)
             </button>
           </div>
 

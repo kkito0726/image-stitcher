@@ -31,7 +31,9 @@ def _real_client(settings: Settings | None = None) -> TestClient:
         preview_max_width=settings.preview_max_width,
         preview_quality=settings.preview_quality,
     )
-    get_result_usecase = GetStitchResultUseCase(codec=codec, cache=cache)
+    get_result_usecase = GetStitchResultUseCase(
+        codec=codec, cache=cache, jpeg_quality=settings.download_jpeg_quality
+    )
     app = create_app(
         stitch_usecase=stitch_usecase,
         get_result_usecase=get_result_usecase,
@@ -66,11 +68,15 @@ class TestStitchAndDownloadIntegration:
 
         dl = client.get(f"/stitch/{result_id}/download")
         assert dl.status_code == 200
-        assert dl.headers["content-type"] == "image/png"
+        assert dl.headers["content-type"] == "image/jpeg"
         full = _decode(dl.content)
-        # フル解像度はプレビューより大きく、PNG はプレビュー JPEG より重い
-        assert full.shape[1] > preview.shape[1]
-        assert len(dl.content) > len(res.content)
+        assert full.shape[1] > preview.shape[1]  # フル解像度はプレビューより大きい
+
+        png = client.get(f"/stitch/{result_id}/download?format=png")
+        assert png.status_code == 200
+        assert png.headers["content-type"] == "image/png"
+        assert _decode(png.content).shape == full.shape
+        assert len(png.content) > len(dl.content)  # ロスレス PNG は JPEG より重い
 
     def test_特徴点のない画像は422(self) -> None:
         flat = np.full((120, 160, 3), 128, dtype=np.uint8)
@@ -110,7 +116,9 @@ class TestStitchAndDownloadIntegration:
         )
         app = create_app(
             stitch_usecase=stitch_usecase,
-            get_result_usecase=GetStitchResultUseCase(codec=codec, cache=cache),
+            get_result_usecase=GetStitchResultUseCase(
+                codec=codec, cache=cache, jpeg_quality=settings.download_jpeg_quality
+            ),
             settings=settings,
             warmup=lambda: calls.append(True),
         )
