@@ -4,6 +4,7 @@ import { useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useImageContext } from "@/context/ImageContext";
+import { currentClientIdHeaders } from "@/lib/clientId";
 
 interface ImgSenderProps {
   files: File[];
@@ -81,7 +82,10 @@ export const ImgSender = ({ files, path, selectedIndex, onCropOnly }: ImgSenderP
     files.forEach((file) => formData.append("images", file));
 
     try {
-      const res = await axios.post("/api/stitch", formData, { responseType: "blob" });
+      const res = await axios.post("/api/stitch", formData, {
+        responseType: "blob",
+        headers: currentClientIdHeaders(),
+      });
       const resultId = res.headers["x-result-id"];
       setState({ phase: "success", previewUrl: URL.createObjectURL(res.data), resultId });
     } catch (err) {
