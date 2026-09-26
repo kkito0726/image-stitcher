@@ -30,6 +30,7 @@ def _real_client(settings: Settings | None = None) -> TestClient:
         cache=cache,
         preview_max_width=settings.preview_max_width,
         preview_quality=settings.preview_quality,
+        max_total_pixels=settings.max_total_pixels,
     )
     get_result_usecase = GetStitchResultUseCase(
         codec=codec, cache=cache, jpeg_quality=settings.download_jpeg_quality
@@ -98,6 +99,15 @@ class TestStitchAndDownloadIntegration:
         assert res.status_code == 400
         assert "error" in res.json()
 
+    def test_デコード後の合計画素数が上限を超えると400(self) -> None:
+        tiles = make_overlapping_tiles()
+        client = _real_client(Settings(max_total_pixels=1000))
+
+        res = client.post("/stitch", data={"mode": "Scans"}, files=_as_files(tiles))
+
+        assert res.status_code == 400
+        assert "画素" in res.json()["error"]
+
     def test_存在しない結果idは404(self) -> None:
         res = _real_client().get("/stitch/unknown-id/download")
         assert res.status_code == 404
@@ -113,6 +123,7 @@ class TestStitchAndDownloadIntegration:
             cache=cache,
             preview_max_width=settings.preview_max_width,
             preview_quality=settings.preview_quality,
+            max_total_pixels=settings.max_total_pixels,
         )
         app = create_app(
             stitch_usecase=stitch_usecase,

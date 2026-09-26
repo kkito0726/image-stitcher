@@ -9,11 +9,21 @@ _DEFAULT_PREVIEW_QUALITY = 80
 _DEFAULT_CACHE_TTL_SECONDS = 600
 _DEFAULT_CACHE_MAX_ENTRIES = 4
 _DEFAULT_DOWNLOAD_JPEG_QUALITY = 95
+# デコード後の合計画素数の上限。圧縮後バイト数だけでは展開後のメモリを抑えられない。
+# 合成処理のピークは実測で約 30 バイト/画素のため、既定のメモリ上限 2G に収まる値にしている
+_DEFAULT_MAX_TOTAL_PIXELS = 40_000_000
 
 
 def _int_env(name: str, default: int) -> int:
     raw = os.environ.get(name)
     return int(raw) if raw is not None else default
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    value = _int_env(name, default)
+    if value < 1:
+        raise ValueError(f"{name} は 1 以上を指定してください: {value}")
+    return value
 
 
 def _str_env(name: str) -> str | None:
@@ -38,6 +48,7 @@ class Settings:
     cache_ttl_seconds: int = _DEFAULT_CACHE_TTL_SECONDS
     cache_max_entries: int = _DEFAULT_CACHE_MAX_ENTRIES
     download_jpeg_quality: int = _DEFAULT_DOWNLOAD_JPEG_QUALITY
+    max_total_pixels: int = _DEFAULT_MAX_TOTAL_PIXELS
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -57,4 +68,7 @@ class Settings:
             cache_ttl_seconds=_int_env("RESULT_CACHE_TTL_SECONDS", _DEFAULT_CACHE_TTL_SECONDS),
             cache_max_entries=_int_env("RESULT_CACHE_MAX_ENTRIES", _DEFAULT_CACHE_MAX_ENTRIES),
             download_jpeg_quality=_int_env("DOWNLOAD_JPEG_QUALITY", _DEFAULT_DOWNLOAD_JPEG_QUALITY),
+            max_total_pixels=_positive_int_env(
+                "STITCH_MAX_TOTAL_PIXELS", _DEFAULT_MAX_TOTAL_PIXELS
+            ),
         )

@@ -28,6 +28,11 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 USER appuser
 EXPOSE 5000
 
+# 1 枚あたりの画素数上限 (合計画素数の上限 STITCH_MAX_TOTAL_PIXELS 以下にする)。
+# OpenCV はヘッダの寸法で判定するため、高圧縮な巨大画像をメモリ確保前に拒否できる
+# (OpenCV の既定は 2^30 画素 ≒ 3.2GB で、コンテナのメモリ上限を超える)
+ENV OPENCV_IO_MAX_IMAGE_PIXELS=40000000
+
 # start-period はワーカーごとの起動時ウォームアップ (ダミー画像の合成) を考慮
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1

@@ -40,6 +40,7 @@ def create_application() -> FastAPI:
         cache=cache,
         preview_max_width=settings.preview_max_width,
         preview_quality=settings.preview_quality,
+        max_total_pixels=settings.max_total_pixels,
     )
     get_result_usecase = GetStitchResultUseCase(
         codec=codec, cache=cache, jpeg_quality=settings.download_jpeg_quality

@@ -2,29 +2,36 @@ from collections.abc import Sequence
 
 import pytest
 
-from src.domain.errors import ImageDecodeError
+from src.domain.errors import ImageDecodeError, ImageTooLargeError
 from src.domain.models import DecodedImage, StitchFailureReason, StitchMode, StitchResult
 from src.usecase.stitch_images import StitchImagesUseCase
 
 
 class FakeImage:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, width: int = 1, height: int = 1) -> None:
         self.name = name
+        self._width = width
+        self._height = height
 
     @property
     def width(self) -> int:
-        return 1
+        return self._width
 
     @property
     def height(self) -> int:
-        return 1
+        return self._height
 
 
 class FakeCodec:
     def decode(self, data: bytes) -> DecodedImage:
         if data == b"broken":
             raise ImageDecodeError("decode failed")
-        return FakeImage(data.decode())
+        # "name:WxH" 形式ならその寸法の画像として扱う
+        name, _, size = data.decode().partition(":")
+        if size:
+            width, height = (int(v) for v in size.split("x"))
+            return FakeImage(name, width, height)
+        return FakeImage(name)
 
     def encode_png(self, image: DecodedImage) -> bytes:
         return b"png:" + getattr(image, "name", "?").encode()
@@ -58,13 +65,18 @@ class FakeCache:
         return self.stored.get(result_id)
 
 
-def _usecase(stitcher: FakeStitcher, cache: FakeCache | None = None) -> StitchImagesUseCase:
+def _usecase(
+    stitcher: FakeStitcher,
+    cache: FakeCache | None = None,
+    max_total_pixels: int = 1_000_000,
+) -> StitchImagesUseCase:
     return StitchImagesUseCase(
         codec=FakeCodec(),
         stitcher=stitcher,
         cache=cache or FakeCache(),
         preview_max_width=1920,
         preview_quality=80,
+        max_total_pixels=max_total_pixels,
     )
 
 
@@ -129,3 +141,28 @@ class TestStitchImagesUseCase:
 
         with pytest.raises(ImageDecodeError):
             usecase.execute([b"img1", b"broken"], "Scans")
+
+    def test_合計画素数が上限ちょうどなら合成する(self) -> None:
+        stitcher = FakeStitcher(StitchResult.succeeded(FakeImage("s")))
+        usecase = _usecase(stitcher, max_total_pixels=200)
+
+        output = usecase.execute([b"a:10x10", b"b:10x10"], "Scans")
+
+        assert output.is_success
+
+    def test_合計画素数が上限を超えるとImageTooLargeErrorを送出し合成しない(self) -> None:
+        stitcher = FakeStitcher(StitchResult.succeeded(FakeImage("s")))
+        usecase = _usecase(stitcher, max_total_pixels=199)
+
+        with pytest.raises(ImageTooLargeError):
+            usecase.execute([b"a:10x10", b"b:10x10"], "Scans")
+
+        assert stitcher.received_images is None
+
+    def test_上限を超えた時点で残りの画像をデコードしない(self) -> None:
+        stitcher = FakeStitcher(StitchResult.succeeded(FakeImage("s")))
+        usecase = _usecase(stitcher, max_total_pixels=150)
+
+        # 2 枚目で上限超過するため、3 枚目の壊れた画像には到達しない
+        with pytest.raises(ImageTooLargeError, match="画素"):
+            usecase.execute([b"a:10x10", b"b:10x10", b"broken"], "Scans")
