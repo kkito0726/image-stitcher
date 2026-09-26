@@ -6,6 +6,12 @@ on:
       - main
   workflow_dispatch:
 
+# 連続マージ時に古いビルドが後から完了して latest を上書きしないよう、
+# 実行中の古いビルドはキャンセルして最新コミットのビルドだけを残す
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
 

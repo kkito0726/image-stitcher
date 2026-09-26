@@ -9,9 +9,17 @@
 #   cp .env.deploy.example .env   # TUNNEL_TOKEN 等を設定
 #   docker compose -f docker-compose.deploy.yml up -d
 
+# ログの肥大化防止 (SD カード運用時の容量・書き込み寿命対策)。1 サービスあたり最大 30MB
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   image-stitcher-backend:
     image: ghcr.io/kkito0726/image-stitcher-backend:latest
+    logging: *default-logging
     restart: unless-stopped
     networks:
       - backend
@@ -39,6 +47,7 @@ services:
 
   image-stitcher-frontend:
     image: ghcr.io/kkito0726/image-stitcher-frontend:latest
+    logging: *default-logging
     restart: unless-stopped
     depends_on:
       image-stitcher-backend:
@@ -65,6 +74,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
+    logging: *default-logging
     restart: unless-stopped
     # トンネルの Public Hostname は Cloudflare ダッシュボードで
     # http://image-stitcher-frontend:80 に向ける
