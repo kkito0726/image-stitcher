@@ -87,3 +87,19 @@ docker compose -f docker-compose.dev.yml up -d --build
 | `docker compose -f docker-compose.dev.yml up -d --build` | ローカルビルドして起動 |
 | `docker compose down` | コンテナ停止・削除 |
 | `docker compose logs -f` | ログを表示 |
+
+## 自宅サーバーでの公開 (Cloudflare Tunnel)
+
+Raspberry Pi 5 / Intel N100 等で公開する場合は `docker-compose.deploy.yml` を使う。ホストのポートは公開せず、cloudflared 経由でのみアクセスできる。
+
+1. Cloudflare Zero Trust > Networks > Tunnels でトンネルを作成し、トークンを控える
+2. トンネルの Public Hostname のサービスを `http://image-stitcher-frontend:80` に設定
+3. 設定ファイルを用意して起動
+
+```bash
+cp .env.deploy.example .env   # TUNNEL_TOKEN と機種別設定を編集
+docker compose -f docker-compose.deploy.yml pull
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+注意: Cloudflare (Free プラン) はリクエストボディ 100MB・応答待ち 100 秒が上限。合成が 100 秒を超えると 524 エラーになるため、低速機では `STITCH_MAX_IMAGES` を控えめにする。
