@@ -1,0 +1,68 @@
+# 固定したバージョンを放置しないよう、更新を PR で提案させる。
+# マージするかは人が判断する (自動マージはしない)。
+version: 2
+
+updates:
+  # Dockerfile のベースイメージ
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: chore
+    ignore:
+      # Node は奇数メジャーが非 LTS のため、メジャー更新は LTS を確認して手動で行う
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      # Python のマイナー更新 (3.12 -> 3.13) は CI・pyproject と合わせて手動で行う
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # nginx は奇数マイナーが mainline のため、安定版系列の更新は手動で行う
+      - dependency-name: nginx
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  # docker-compose.deploy.yml の cloudflared
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: chore
+
+  # ワークフローで使う GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # フロントエンドの npm パッケージ (package-lock.json)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: chore
+    open-pull-requests-limit: 5
+    groups:
+      # マイナー・パッチはまとめて 1 PR にし、メジャー更新は個別 PR で確認する
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
