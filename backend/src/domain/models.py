@@ -15,6 +15,13 @@ class StitchMode(Enum):
         return cls.SCANS if label == cls.SCANS.value else cls.PANORAMA
 
 
+class DownloadFormat(Enum):
+    """フル解像度ダウンロードの画像形式。既定は軽量な JPEG、無劣化が必要な場合のみ PNG。"""
+
+    JPEG = "jpeg"
+    PNG = "png"
+
+
 class StitchFailureReason(Enum):
     NEED_MORE_IMAGES = "need_more_images"
     HOMOGRAPHY_ESTIMATION_FAILED = "homography_estimation_failed"
