@@ -2,6 +2,14 @@ services:
   image-stitcher-backend:
     image: ghcr.io/kkito0726/image-stitcher-backend:latest
     restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: json
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - backend
     expose:

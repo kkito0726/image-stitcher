@@ -3,8 +3,8 @@
 環境変数から読んだ設定が実際の依存に渡り、起動時のウォームアップが動くことを確認する。
 """
 
-import logging
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,12 +21,11 @@ def _as_files(payloads: list[bytes]) -> list[tuple[str, tuple[str, bytes, str]]]
 
 class TestCreateApplication:
     def test_起動時にウォームアップしてから合成とダウンロードができる(
-        self, caplog: pytest.LogCaptureFixture
+        self, log_events: list[dict[str, Any]]
     ) -> None:
-        caplog.set_level(logging.INFO, logger="src.main")
-
         with TestClient(create_application()) as client:
-            assert "ウォームアップ完了" in caplog.text
+            [warmup] = [e for e in log_events if e["event"] == "warmup.completed"]
+            assert isinstance(warmup["duration_ms"], int)
             assert client.get("/health").status_code == 200
 
             res = client.post(
@@ -67,10 +66,10 @@ class _FailingStitchUseCase:
 
 
 def test_ウォームアップの合成が失敗しても起動を止めず警告を残す(
-    caplog: pytest.LogCaptureFixture,
+    log_events: list[dict[str, Any]],
 ) -> None:
-    caplog.set_level(logging.WARNING, logger="src.main")
-
     _warmup(_FailingStitchUseCase())  # type: ignore[arg-type]
 
-    assert "ウォームアップのスティッチが失敗しました" in caplog.text
+    [event] = [e for e in log_events if e["event"] == "warmup.failed"]
+    assert event["log_level"] == "warning"
+    assert event["failure"] == "need_more_images"

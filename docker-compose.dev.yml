@@ -4,6 +4,14 @@ services:
       context: ./backend
       target: production
     restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: console  # 開発時は読みやすいカラー表示
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - backend
     expose:
