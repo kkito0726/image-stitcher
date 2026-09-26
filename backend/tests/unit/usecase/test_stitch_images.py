@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
 
@@ -166,3 +167,32 @@ class TestStitchImagesUseCase:
         # 2 枚目で上限超過するため、3 枚目の壊れた画像には到達しない
         with pytest.raises(ImageTooLargeError, match="画素"):
             usecase.execute([b"a:10x10", b"b:10x10", b"broken"], "Scans")
+
+    def test_合成の所要時間と規模をログに出す(self, log_events: list[dict[str, Any]]) -> None:
+        stitched = FakeImage("s", 30, 20)
+        usecase = _usecase(FakeStitcher(StitchResult.succeeded(stitched)))
+
+        usecase.execute([b"a:10x10", b"b:10x10"], "Scans")
+
+        [event] = [e for e in log_events if e["event"] == "stitch.completed"]
+        assert event["log_level"] == "info"
+        assert event["mode"] == "Scans"
+        assert event["image_count"] == 2
+        assert event["total_pixels"] == 200
+        assert event["stitched"] is True
+        assert event["output_width"] == 30
+        assert event["output_height"] == 20
+        for key in ("decode_ms", "stitch_ms", "preview_ms"):
+            assert isinstance(event[key], int)
+
+    def test_合成できなかったときも失敗理由と所要時間をログに出す(
+        self, log_events: list[dict[str, Any]]
+    ) -> None:
+        usecase = _usecase(FakeStitcher(StitchResult.failed(StitchFailureReason.NEED_MORE_IMAGES)))
+
+        usecase.execute([b"a:10x10", b"b:10x10"], "Scans")
+
+        [event] = [e for e in log_events if e["event"] == "stitch.completed"]
+        assert event["stitched"] is False
+        assert event["failure"] == "need_more_images"
+        assert isinstance(event["stitch_ms"], int)
