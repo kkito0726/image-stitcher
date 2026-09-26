@@ -62,6 +62,17 @@ updates:
     commit-message:
       prefix: chore
     open-pull-requests-limit: 5
+    ignore:
+      # @types/node はビルドに使う Node (frontend/Dockerfile, 24) のメジャーに合わせる。
+      # Node を上げるときに手動で揃える
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+      # TypeScript 7 / ESLint 10 は Next.js (typescript-eslint, eslint-config-next) が未対応で
+      # lint・ビルドが壊れる (2026-09 時点)。対応後に手動で上げる
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
     groups:
       # マイナー・パッチはまとめて 1 PR にし、メジャー更新は個別 PR で確認する
       npm-minor-and-patch:
