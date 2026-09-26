@@ -41,6 +41,8 @@ def test_structlogと標準loggingのログが1行ずつJSONで出る(
     lines = _json_lines(capsys)
 
     assert [line["event"] for line in lines] == ["stitch.completed", "Started server process"]
+    for line in lines:
+        assert list(line)[:5] == ["timestamp", "level", "event", "logger", "request_id"]
     assert all(line["request_id"] == "rid-1" for line in lines)
     assert lines[0]["level"] == "info"
     assert lines[0]["stitch_ms"] == 5

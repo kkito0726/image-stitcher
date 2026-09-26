@@ -1,8 +1,9 @@
-"""リクエスト単位のログ出力 (request.completed / request.failed)。
+"""リクエスト単位のログ出力 (request.received / request.completed / request.failed)。
 
 - request_id を contextvars に束ね、スレッドプールで動く usecase のログにも自動で付ける
+- 到着時に request.received を出す。処理中にワーカーごと落ちて request.completed が
+  出なかった場合も、どのリクエストで落ちたかが残る
 - 利用者のデータ (画像の中身・ファイル名) と秘密情報は出さない。IP アドレスも記録しない
-- 4xx / 5xx のときだけ、調査用にリクエストの要約 (ヘッダ・フォーム・ファイル情報) を付ける
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import time
 import uuid
 from collections.abc import Iterable
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import PurePath
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -31,8 +32,8 @@ REDACTED = "[REDACTED]"
 _REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9-]{1,64}")
 _HEADER_VALUE_MAX = 512
 _USER_AGENT_MAX = 256
-_FORM_VALUE_MAX = 1024
 _UNMATCHED_PATH_MAX = 128
+_QUERY_MAX = 256
 _NOT_LOGGED_PATHS = frozenset({"/health"})  # Docker のヘルスチェックが 30 秒ごとに叩く
 
 # 値を出すヘッダ。IP を含むもの (X-Real-IP, X-Forwarded-For, CF-Connecting-IP) や
@@ -106,8 +107,6 @@ class RequestLogState:
     """
 
     reason: ErrorReason | None = None
-    form: dict[str, str] = field(default_factory=dict)
-    files: list[dict[str, Any]] = field(default_factory=list)
 
 
 _current_state: ContextVar[RequestLogState | None] = ContextVar("request_log_state", default=None)
@@ -122,25 +121,24 @@ def record_reason(reason: ErrorReason) -> None:
     current_log_state().reason = reason
 
 
-def record_form(form: dict[str, str], files: list[dict[str, Any]]) -> None:
-    state = current_log_state()
-    state.form = {k: v[:_FORM_VALUE_MAX] for k, v in form.items()}
-    state.files = files
-
-
 _RESULT_ID_IN_PATH = re.compile(r"^/stitch/[^/]+/download")
 
 
+def _masked_raw_path(scope: Scope) -> str:
+    # 生のパスは結果 ID (ダウンロードの鍵) を含むため伏せる
+    raw = str(scope.get("path", ""))
+    masked = _RESULT_ID_IN_PATH.sub("/stitch/{result_id}/download", raw)
+    return masked[:_UNMATCHED_PATH_MAX]
+
+
 def _route_path(scope: Scope) -> str:
-    # 生のパスは結果 ID (ダウンロードの鍵) を含むため、ルートのテンプレートを出す
+    # ルーティング後はテンプレートを出す。ルートに当たらない場合 (末尾スラッシュの 307 など)
+    # も結果 ID の部分は伏せる
     route = scope.get("route")
     path_format = getattr(route, "path_format", None)
     if isinstance(path_format, str):
         return path_format
-    # ルートに当たらない場合 (末尾スラッシュの 307 など) も結果 ID の部分は伏せる
-    raw = str(scope.get("path", ""))
-    masked = _RESULT_ID_IN_PATH.sub("/stitch/{result_id}/download", raw)
-    return masked[:_UNMATCHED_PATH_MAX]
+    return _masked_raw_path(scope)
 
 
 def _level_for(status: int) -> int:
@@ -179,6 +177,7 @@ class RequestLoggingMiddleware:
             context["cf_ray"] = cf_ray[:_HEADER_VALUE_MAX]
         structlog.contextvars.bind_contextvars(**context)
 
+        self._log_received(scope, headers)
         state = RequestLogState()
         token = _current_state.set(state)
         started = time.perf_counter()
@@ -209,6 +208,21 @@ class RequestLoggingMiddleware:
             _current_state.reset(token)
             self._log_completed(scope, headers, state, status, started, aborted)
             structlog.contextvars.clear_contextvars()
+
+    @staticmethod
+    def _log_received(scope: Scope, headers: Headers) -> None:
+        path = _masked_raw_path(scope)
+        if path in _NOT_LOGGED_PATHS:
+            return
+        logger.info(
+            "request.received",
+            method=scope.get("method"),
+            path=path,
+            query=bytes(scope.get("query_string", b"")).decode("latin-1")[:_QUERY_MAX],
+            content_length=headers.get("content-length"),
+            user_agent=truncate_user_agent(headers.get("user-agent")),
+            headers=redact_headers(headers.items()),
+        )
 
     @staticmethod
     async def _send_internal_error(send: Send) -> None:
@@ -249,12 +263,4 @@ class RequestLoggingMiddleware:
             event["reason"] = state.reason
         if aborted:
             event["aborted"] = True
-        debug = logging.getLogger("request_logging").isEnabledFor(logging.DEBUG)
-        if aborted or status >= 400 or debug:
-            request: dict[str, Any] = {"headers": redact_headers(headers.items())}
-            if state.form:
-                request["form"] = state.form
-            if state.files:
-                request["files"] = state.files
-            event["request"] = request
         logger.log(level, "request.completed", **event)

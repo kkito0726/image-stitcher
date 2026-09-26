@@ -60,11 +60,24 @@ _SHARED_PROCESSORS: list[Any] = [
 ]
 
 
+# JSON で先頭に並べるキー。時刻から読めるよう timestamp を最初にする
+_LEADING_KEYS = ("timestamp", "level", "event", "logger", "request_id", "cf_ray")
+
+
+def _leading_keys_first(
+    _logger: Any, _method_name: str, event_dict: structlog.typing.EventDict
+) -> structlog.typing.EventDict:
+    ordered = {key: event_dict[key] for key in _LEADING_KEYS if key in event_dict}
+    ordered.update(event_dict)  # 残りのキーは元の順序のまま後ろに付く
+    return ordered
+
+
 def _renderer(log_format: LogFormat) -> list[Any]:
     if log_format is LogFormat.CONSOLE:
         return [structlog.dev.ConsoleRenderer()]
     return [
         structlog.processors.format_exc_info,
+        _leading_keys_first,
         structlog.processors.JSONRenderer(ensure_ascii=False),
     ]
 

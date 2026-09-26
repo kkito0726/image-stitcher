@@ -34,6 +34,7 @@ async def test_レスポンス送信開始後の失敗はerrorで記録して再
         await middleware(scope, receive, send)
 
     [completed] = [e for e in log_events if e["event"] == "request.completed"]
+    assert "request" not in completed
     assert completed["log_level"] == "error"
     assert completed["reason"] == "internal_error"
     assert completed["aborted"] is True

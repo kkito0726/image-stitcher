@@ -67,7 +67,7 @@ def _completed(entries: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 class TestRequestCompleted:
-    def test_成功時はinfoでrequest内容を出さない(self, log_events: list[dict[str, Any]]) -> None:
+    def test_完了時はステータスと所要時間を出す(self, log_events: list[dict[str, Any]]) -> None:
         res = _client().post(
             "/stitch",
             data={"mode": "Scans"},
@@ -83,7 +83,6 @@ class TestRequestCompleted:
         assert event["status"] == 200
         assert event["user_agent"] == "pytest-agent"
         assert isinstance(event["duration_ms"], int)
-        assert "request" not in event
         assert "reason" not in event
 
     def test_スレッドプール内のログにも同じrequest_idが付きレスポンスヘッダと一致する(
@@ -132,35 +131,81 @@ class TestRequestCompleted:
         assert len(event["path"]) <= 128
 
 
-class TestRequestErrors:
-    def test_400はwarningでreasonとrequestが付きファイル名を出さない(
+class TestRequestReceived:
+    def test_到着時にヘッダを伏せてリクエストの内容を出す(
         self, log_events: list[dict[str, Any]]
     ) -> None:
+        _client().get(
+            "/stitch/x/download?format=png",
+            headers={
+                "User-Agent": "pytest-agent",
+                "Cookie": "session=secret",
+                "X-Real-IP": "203.0.113.5",
+            },
+        )
+
+        [received] = _events(log_events, "request.received")
+        assert received["log_level"] == "info"
+        assert received["method"] == "GET"
+        assert received["path"] == "/stitch/{result_id}/download"
+        assert received["query"] == "format=png"
+        assert received["user_agent"] == "pytest-agent"
+        assert received["headers"]["cookie"] == "[REDACTED]"
+        text = json.dumps(received)
+        assert "secret" not in text
+        assert "203.0.113.5" not in text
+
+    def test_到着のログは完了より先に出て同じrequest_idを持つ(
+        self, log_events: list[dict[str, Any]]
+    ) -> None:
+        _client().post("/stitch", data={"mode": "Scans"}, files=_files(2))
+
+        names = [e["event"] for e in log_events]
+        assert names.index("request.received") < names.index("request.completed")
+        request_ids = {e["request_id"] for e in log_events}
+        assert len(request_ids) == 1
+
+    def test_合成はデコード前にモードと画像の情報を出しファイル名は出さない(
+        self, log_events: list[dict[str, Any]]
+    ) -> None:
+        _client().post("/stitch", data={"mode": "Scans"}, files=_files(2))
+
+        [received] = _events(log_events, "stitch.received")
+        assert received["mode"] == "Scans"
+        assert received["image_count"] == 2
+        assert received["upload_bytes"] == 20
+        assert received["files"][0] == {
+            "field": "images",
+            "content_type": "image/jpeg",
+            "size": 10,
+            "ext": ".jpg",
+            "filename_len": len("患者A_001.JPG"),
+        }
+        assert "患者A" not in json.dumps(received, ensure_ascii=False)
+        names = [e["event"] for e in log_events]
+        assert names.index("stitch.received") < names.index("stitch.completed")
+
+    def test_healthは到着時も出さない(self, log_events: list[dict[str, Any]]) -> None:
+        _client().get("/health")
+
+        assert log_events == []
+
+
+class TestRequestErrors:
+    def test_400はwarningでreasonが付く(self, log_events: list[dict[str, Any]]) -> None:
         res = _client(settings=Settings(max_images=1)).post(
-            "/stitch",
-            data={"mode": "Scans"},
-            files=_files(2),
-            headers={"Cookie": "session=secret", "X-Real-IP": "203.0.113.5"},
+            "/stitch", data={"mode": "Scans"}, files=_files(2)
         )
 
         assert res.status_code == 400
         event = _completed(log_events)
         assert event["log_level"] == "warning"
         assert event["reason"] == "too_many_images"
-        assert event["request"]["form"] == {"mode": "Scans"}
-        assert len(event["request"]["files"]) == 2
-        assert event["request"]["files"][0]["ext"] == ".jpg"
-        text = json.dumps(event, ensure_ascii=False)
-        assert "患者A" not in text
-        assert "secret" not in text
-        assert "203.0.113.5" not in text
 
     def test_必須項目の欠落はinvalid_params(self, log_events: list[dict[str, Any]]) -> None:
         _client().post("/stitch", data={"mode": "Scans"})
 
-        event = _completed(log_events)
-        assert event["reason"] == "invalid_params"
-        assert "headers" in event["request"]
+        assert _completed(log_events)["reason"] == "invalid_params"
 
     def test_デコード不可と画素数超過を区別する(self, log_events: list[dict[str, Any]]) -> None:
         _client(FakeStitchUseCase(error=ImageDecodeError("x"))).post(

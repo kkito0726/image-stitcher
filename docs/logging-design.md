@@ -38,6 +38,8 @@ structlog と標準 `logging` は `ProcessorFormatter` で統合しているた�
 
 ### 3.1 共通フィールド
 
+JSON では、下表のキーをこの順で先頭に並べる (`timestamp` が常に先頭)。
+
 | キー | 例 | 備考 |
 |---|---|---|
 | `timestamp` | `2026-09-27T01:23:45.678Z` | UTC、ISO 8601 |
@@ -51,7 +53,9 @@ structlog と標準 `logging` は `ProcessorFormatter` で統合しているた�
 
 | event | level | 主なフィールド | 出す場所 |
 |---|---|---|---|
-| `request.completed` | 2xx/3xx: info、4xx: warning、5xx: error | `method`, `path`, `status`, `duration_ms`, `content_length`, `user_agent`, (4xx/5xx) `reason`, `request`, (応答の送信中に失敗) `aborted` | ミドルウェア。`/health` は除外 |
+| `request.received` | info | `method`, `path`, `query`, `content_length`, `user_agent`, `headers` (伏せ字済み) | ミドルウェア (到着時)。`/health` は除外 |
+| `stitch.received` | info | `mode`, `image_count`, `upload_bytes`, `files` | stitch ルーター (フォーム解析の直後、デコードの前) |
+| `request.completed` | 2xx/3xx: info、4xx: warning、5xx: error | `method`, `path`, `status`, `duration_ms`, `content_length`, `user_agent`, (4xx/5xx) `reason`, (応答の送信中に失敗) `aborted` | ミドルウェア。`/health` は除外 |
 | `request.failed` | error | `exception` (スタックトレース) | ミドルウェア (想定外の例外) |
 | `stitch.completed` | info | `mode`, `image_count`, `total_pixels`, `decode_ms`, `stitch_ms`, `stitched`, (成功時) `output_width`, `output_height`, `preview_ms`, `preview_bytes`, (失敗時) `failure` | `StitchImagesUseCase` |
 | `download.completed` | info | `format`, `bytes`, `encode_ms` | `GetStitchResultUseCase` |
@@ -60,6 +64,7 @@ structlog と標準 `logging` は `ProcessorFormatter` で統合しているた�
 - `path` は **ルートのテンプレート** (`/stitch/{result_id}/download`) を出す。生のパスには結果 ID (ダウンロードの鍵) が含まれるため。ルートに当たらない場合は、結果 ID の部分を伏せたうえで 128 文字で切り詰める
 - エラー件数の集計は `event == "request.failed"` で行う (`request.completed` の 5xx と二重に数えない)
 - 合成できずに 422 になった場合も `stitch.completed` (`stitched: false`) に処理時間が残る
+- `request.received` と `stitch.received` は処理の前に出す。巨大な画像などでワーカーごと落ちて `request.completed` が出なかった場合も、何を受け取った直後に落ちたかが `request_id` で追える
 
 ### 3.3 `reason` コード
 
@@ -80,15 +85,19 @@ structlog と標準 `logging` は `ProcessorFormatter` で統合しているた�
 
 ### 3.4 出力例
 
+合成リクエスト 1 件 (`request_id` で束ねる):
+
 ```json
-{"stitched": true, "output_width": 3501, "output_height": 3238, "preview_ms": 41, "preview_bytes": 429757, "mode": "Scans", "image_count": 6, "total_pixels": 26873856, "decode_ms": 180, "stitch_ms": 1320, "event": "stitch.completed", "request_id": "9f1c2a...", "level": "info", "logger": "src.usecase.stitch_images", "timestamp": "2026-09-27T01:23:45.678Z"}
-{"method": "POST", "path": "/stitch", "status": 200, "duration_ms": 1580, "content_length": "16700000", "user_agent": "Mozilla/5.0 (Macintosh; ...)", "event": "request.completed", "request_id": "9f1c2a...", "level": "info", "logger": "request_logging", "timestamp": "..."}
+{"timestamp": "2026-09-27T01:23:22.127Z", "level": "info", "event": "request.received", "logger": "request_logging", "request_id": "demo-1", "method": "POST", "path": "/stitch", "query": "", "content_length": "5575564", "user_agent": "Mozilla/5.0 ...", "headers": {"host": "[REDACTED]", "user-agent": "Mozilla/5.0 ...", "cookie": "[REDACTED]", "content-type": "multipart/form-data; boundary=..."}}
+{"timestamp": "2026-09-27T01:23:22.232Z", "level": "info", "event": "stitch.received", "logger": "src.presentation.routers.stitch", "request_id": "demo-1", "mode": "Scans", "image_count": 2, "upload_bytes": 5575104, "files": [{"field": "images", "content_type": "image/jpeg", "size": 2782365, "ext": ".jpg", "filename_len": 12}, {"...": "..."}]}
+{"timestamp": "2026-09-27T01:23:23.498Z", "level": "info", "event": "stitch.completed", "logger": "src.usecase.stitch_images", "request_id": "demo-1", "stitched": true, "output_width": 2596, "output_height": 2478, "preview_ms": 48, "preview_bytes": 429732, "mode": "Scans", "image_count": 2, "total_pixels": 8957952, "decode_ms": 60, "stitch_ms": 1150}
+{"timestamp": "2026-09-27T01:23:23.503Z", "level": "info", "event": "request.completed", "logger": "request_logging", "request_id": "demo-1", "method": "POST", "path": "/stitch", "status": 200, "duration_ms": 1376, "content_length": "5575564", "user_agent": "Mozilla/5.0 ..."}
 ```
 
-入力エラー時は `request` が付く:
+入力エラー時は `request.completed` が `warning` になり、`reason` が付く:
 
 ```json
-{"method": "POST", "path": "/stitch", "status": 400, "reason": "too_many_images", "request": {"headers": {"content-type": "multipart/form-data; boundary=...", "user-agent": "Mozilla/5.0 ...", "cookie": "[REDACTED]", "x-real-ip": "[REDACTED]"}, "form": {"mode": "Scans"}, "files": [{"field": "images", "content_type": "image/jpeg", "size": 2782365, "ext": ".jpg", "filename_len": 12}]}, "event": "request.completed", "level": "warning", "...": "..."}
+{"timestamp": "...", "level": "warning", "event": "request.completed", "logger": "request_logging", "request_id": "...", "method": "POST", "path": "/stitch", "status": 400, "reason": "too_many_images", "duration_ms": 3, "...": "..."}
 ```
 
 ## 4. request_id
@@ -100,17 +109,19 @@ structlog と標準 `logging` は `ProcessorFormatter` で統合しているた�
 
 ## 5. リクエスト内容の記録
 
-`request.completed` の `request` フィールドは、4xx / 5xx のとき (と `LOG_LEVEL=DEBUG` のとき) だけ付ける。
+すべてのリクエスト (`/health` を除く) で、到着時に `request.received` を出す。合成リクエストは、フォームを解析した直後に `stitch.received` も出す。
 
 | 項目 | 出し方 |
 |---|---|
+| パス | 到着時はルーティング前なので、結果 ID の部分を `{result_id}` に置き換えた生のパス (128 文字で切り詰め) |
+| クエリ | 256 文字で切り詰める (現状は `format=png` のみ) |
 | ヘッダ | 名前はすべて出す。値は許可リストのものだけ出し (512 文字で切り詰め)、それ以外は `[REDACTED]`。`Referer` はクエリとフラグメントを落とす |
-| フォーム項目 | `mode` を 1KB で切り詰めて出す |
-| アップロードファイル | `field`, `content_type`, `size`, `ext`, `filename_len` のみ。**ファイル名そのものと中身は出さない** (DEBUG でも出さない) |
+| フォーム項目 | `mode` を 64 文字で切り詰めて出す |
+| アップロードファイル | `field`, `content_type`, `size`, `ext`, `filename_len` のみ。**ファイル名そのものと中身は出さない** |
 
 値を出すヘッダの許可リスト: `Content-Type`, `Content-Length`, `User-Agent`, `Accept`, `Accept-Language`, `Origin`, `Referer`, `X-Request-ID`, `CF-Ray`, `CF-IPCountry`。
 
-IP を含むヘッダ (`X-Real-IP`, `X-Forwarded-For`, `CF-Connecting-IP`) や `Cookie`, `Authorization` は許可リスト外なので伏せられる。ルートに当たらないパス (末尾スラッシュ付きなど) も、結果 ID の部分は `{result_id}` に置き換える。CORS のプリフライトは CORS ミドルウェアが先に応答するため記録しない。必須項目の欠落 (`invalid_params`) のようにルーターまで届かないリクエストは、`headers` だけになる。
+IP を含むヘッダ (`X-Real-IP`, `X-Forwarded-For`, `CF-Connecting-IP`) や `Cookie`, `Authorization` は許可リスト外なので伏せられる。ルートに当たらないパス (末尾スラッシュ付きなど) も、結果 ID の部分は `{result_id}` に置き換える。CORS のプリフライトは CORS ミドルウェアが先に応答するため記録しない。必須項目の欠落 (`invalid_params`) のようにルーターまで届かないリクエストは、`request.received` だけが出て `stitch.received` は出ない。
 
 ## 6. 設定
 
@@ -131,6 +142,7 @@ gunicorn と uvicorn のアクセスログ (接続元 IP を含む) は `WARNING
 | フック | Flask の `before_request` / `after_request` | pure ASGI ミドルウェア | 同期エンドポイントはスレッドで動き、Flask の `g` に相当するものがない。ミドルウェアが作ったオブジェクトにルーターが `reason` を書き込む |
 | 500 の処理 | `except Exception` で `convert.failed` | ミドルウェアで捕捉して `request.failed` を出し、詳細を含まない 500 を返す | Starlette では想定外の例外がミドルウェアの外側で処理され、`X-Request-ID` を付けられないため |
 | `path` | 生のパス | ルートのテンプレート | ダウンロードの URL に結果 ID が含まれるため |
+| リクエスト内容 | 4xx / 5xx 時に `request.completed` の `request` に付ける | 到着時に `request.received` / `stitch.received` として毎回出す | 処理中にワーカーごと落ちても、何を受け取ったかが残るようにするため |
 
 ## 8. 既知の制約
 

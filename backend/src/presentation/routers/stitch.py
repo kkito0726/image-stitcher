@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
@@ -7,11 +8,12 @@ from src.config import Settings
 from src.domain.errors import ImageDecodeError, ImageTooLargeError
 from src.domain.models import StitchFailureReason
 from src.presentation.error_reason import ErrorReason
-from src.presentation.request_logging import record_form, record_reason, summarize_upload
+from src.presentation.request_logging import record_reason, summarize_upload
 from src.presentation.schemas import ErrorResponse, StitchFailureResponse
 from src.usecase.stitch_images import StitchImagesUseCase
 
 router = APIRouter()
+logger = structlog.stdlib.get_logger(__name__)
 
 
 def _bad_request(message: str, reason: ErrorReason) -> JSONResponse:
@@ -40,9 +42,14 @@ def stitch(
     settings: Settings = request.app.state.settings
     usecase: StitchImagesUseCase = request.app.state.stitch_usecase
 
-    record_form(
-        {"mode": mode},
-        [summarize_upload("images", f.filename, f.content_type, f.size) for f in images],
+    # デコード前に出す。巨大な画像でワーカーごと落ちても、何を受け取ったかが残る
+    files = [summarize_upload("images", f.filename, f.content_type, f.size) for f in images]
+    logger.info(
+        "stitch.received",
+        mode=mode[:64],
+        image_count=len(images),
+        upload_bytes=sum(f.size or 0 for f in images),
+        files=files,
     )
 
     if len(images) > settings.max_images:
