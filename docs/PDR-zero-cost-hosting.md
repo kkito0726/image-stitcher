@@ -1,12 +1,14 @@
 # PDR: 0 円本番運用(URL アクセスのみで利用可能なホスティング)
 
-- ステータス: Draft
+- ステータス: Superseded(2026-09 に自宅サーバー + Cloudflare Tunnel での運用へ変更。本 PDR の Cloud Run 案は採用しない)
 - 作成日: 2026-07-05
 - 対象: ユーザーが Docker を使わず、URL を開くだけでアプリを利用できる 0 円のホスティング構成
 - 関連文書: [PDR-python-backend-modernization.md](./PDR-python-backend-modernization.md)(実装済み)、[PDR-cpp-backend-migration.md](./PDR-cpp-backend-migration.md)(保留)
 - 補足: Python 近代化 PDR §12 の「クラウドデプロイはスコープ外」決定を本 PDR で上書きする
 
 ---
+
+> **2026-09-26 注記**: ホスティングは本 PDR の案 A(Cloud Run + GitHub Pages)ではなく、**自宅サーバー(Raspberry Pi 5 / Intel N100)+ Cloudflare Tunnel** で行うことにした。R1(URL アクセスのみで利用可能)と R2(実質 0 円。転送量課金なし、費用はドメイン代と電気代のみ)は満たせる。構成は `docker-compose.deploy.yml`(PR #15。backend / frontend / cloudflared、ホストのポート公開なし)を参照。以下は検討記録として残す。
 
 ## 1. 背景と要件
 
@@ -74,7 +76,7 @@ Cloud Run の恒久無料枠(執筆時点。セットアップ時に最新の料
 
 GitHub Pages / Actions は public リポジトリのため無料。
 
-**2026-07-05 更新**: 上記は合成結果を毎回フル解像度(実測 73.8MB)で返す前提の試算だった。実測の結果、フル解像度の転送だけで無料枠(1GB)を月 13〜14 回で使い切ることが判明したため、[PDR-preview-lazy-download.md](./PDR-preview-lazy-download.md)でプレビュー即時返却 + フル解像度の遅延ダウンロード方式を設計した。この方式を採用した場合、プレビューのみの利用なら月 2,800 回相当まで実質 0 円、フルダウンロードを含む現実的な混合利用でも月数十円程度に収まる見込み(詳細は同 PDR §8)。
+**2026-07-05 更新**: 上記は合成結果を毎回フル解像度(実測 73.8MB。※2026-09-26 の実画像による再計測では PNG 17.7MB、[PDR-preview-lazy-download.md](./PDR-preview-lazy-download.md) §3.1)で返す前提の試算だった。実測の結果、フル解像度の転送だけで無料枠(1GB)を月 13〜14 回で使い切ることが判明したため、[PDR-preview-lazy-download.md](./PDR-preview-lazy-download.md)でプレビュー即時返却 + フル解像度の遅延ダウンロード方式を設計した。この方式を採用した場合、プレビューのみの利用なら月 2,800 回相当まで実質 0 円、フルダウンロードを含む現実的な混合利用でも月数十円程度に収まる見込み(詳細は同 PDR §8)。
 
 ## 5. 必要な実装変更(小規模)
 
