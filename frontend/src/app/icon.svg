@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Topbar のロゴと同じ図形。favicon では CSS 変数が使えないため色を直接指定する -->
+  <rect x="4" y="6" width="14" height="10" rx="2" fill="#f59e0b" opacity="0.6"/>
+  <rect x="14" y="10" width="14" height="10" rx="2" fill="#f59e0b"/>
+  <rect x="9" y="16" width="14" height="10" rx="2" fill="#fbbf24" opacity="0.8"/>
+</svg>
