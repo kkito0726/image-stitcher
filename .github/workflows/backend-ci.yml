@@ -12,6 +12,9 @@ on:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -36,6 +39,9 @@ jobs:
       - name: Lint (ruff)
         run: ruff check src tests
 
+      - name: Format check (ruff)
+        run: ruff format --check src tests
+
       - name: Type check (mypy)
         run: mypy src
 
@@ -44,3 +50,59 @@ jobs:
 
       - name: Test (pytest, coverage 80%+)
         run: pytest
+
+  # 本番イメージをビルド・起動してスモークテストする。
+  # Dockerfile の変更 (依存・起動コマンド・画素数上限の ENV など) を main へのマージ前に検証する
+  image-smoke-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build production image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: production
+          load: true
+          push: false
+          tags: image-stitcher-backend:ci
+          cache-from: type=gha,scope=backend-smoke
+          cache-to: type=gha,scope=backend-smoke,mode=max
+
+      # 本番 (docker-compose.deploy.yml) と同じメモリ上限で起動する
+      - name: Start container
+        run: docker run -d --name backend --memory 2g -p 127.0.0.1:5000:5000 image-stitcher-backend:ci
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install test dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Smoke test
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:5000
+        run: pytest tests/smoke --no-cov -p no:cacheprovider
+
+      - name: Check container was not OOM-killed or restarted
+        run: |
+          state=$(docker inspect --format '{{.State.Running}} {{.State.OOMKilled}} {{.RestartCount}}' backend)
+          echo "running oomkilled restarts: $state"
+          test "$state" = "true false 0"
+
+      - name: Show container logs
+        if: always()
+        run: docker logs backend
