@@ -103,3 +103,25 @@ docker compose -f docker-compose.deploy.yml up -d
 ```
 
 注意: Cloudflare (Free プラン) はリクエストボディ 100MB・応答待ち 100 秒が上限。合成が 100 秒を超えると 524 エラーになるため、低速機では `STITCH_MAX_IMAGES` を控えめにする。
+
+### 初回セットアップ時の確認
+
+```bash
+# OS 起動時に Docker (= 各コンテナ) が自動起動するようにする
+sudo systemctl enable docker
+
+# メモリ上限が効くか確認する。"No memory limit support" の WARNING が出る場合、
+# Raspberry Pi では /boot/firmware/cmdline.txt の行末に
+# "cgroup_enable=memory cgroup_memory=1" を追記して再起動する
+docker info 2>&1 | grep -i "memory limit"
+```
+
+### 本番の更新
+
+```bash
+cd ~/Workspace/image-stitcher
+git pull
+docker compose -f docker-compose.deploy.yml pull
+docker compose -f docker-compose.deploy.yml up -d
+docker image prune -f   # 古いイメージを削除
+```

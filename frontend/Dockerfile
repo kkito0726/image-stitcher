@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Dependencies
 # ============================================
-FROM node:20-alpine AS deps
+FROM node:24.21.0-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci && npm cache clean --force
@@ -9,7 +9,7 @@ RUN npm ci && npm cache clean --force
 # ============================================
 # Stage 2: Build
 # ============================================
-FROM node:20-alpine AS build
+FROM node:24.21.0-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -18,7 +18,7 @@ RUN npm run build
 # ============================================
 # Stage 3: Production (nginx)
 # ============================================
-FROM nginx:alpine AS production
+FROM nginx:1.30.5-alpine AS production
 
 # Create non-root user
 RUN addgroup -g 1001 -S appgroup && \
