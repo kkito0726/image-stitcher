@@ -47,7 +47,7 @@ export const Topbar = () => {
         {/* Logo Text */}
         <span className="font-semibold text-[15px] tracking-tight">
           <span className="text-[var(--text-primary)] group-hover:text-[var(--text-secondary)] transition-colors">
-            Image
+            Panorama Image
           </span>
           <span className="text-[var(--accent-primary)] ml-0.5">Stitcher</span>
         </span>

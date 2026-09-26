@@ -1,4 +1,4 @@
-# Image Stitcher
+# Panorama Image Stitcher
 
 顕微鏡画像同士を重ね合わせて視野の広い顕微鏡画像を作成する
 

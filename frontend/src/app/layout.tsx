@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Image Stitcher",
+  title: "Panorama Image Stitcher",
   description: "画像を重ね合わせてパノラマ写真を作成",
 };
 
