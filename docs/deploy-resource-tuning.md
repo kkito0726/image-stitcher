@@ -2,7 +2,7 @@
 
 - 作成日: 2026-09-26
 - 対象: `docker-compose.deploy.yml` の backend に渡す、メモリと入力上限の設定
-- 関連: [.env.deploy.example](../.env.deploy.example)、`backend/Dockerfile` の `OPENCV_IO_MAX_IMAGE_PIXELS`
+- 関連: [.env.deploy.example](../.env.deploy.example)、[docker-compose.deploy.yml](../docker-compose.deploy.yml)
 
 現在は Raspberry Pi 5 (4GB) で `.env.deploy.example` の既定の構成を使っている。このガイドは、上位機種へ移行するときに設定値を決める手順と、機種ごとの推奨値をまとめたもの。
 
@@ -12,7 +12,7 @@
 |------|------|------|
 | `BACKEND_MEMORY` | `.env` | backend コンテナのメモリ上限。超えると OOM でワーカーが強制終了され、キャッシュ中の全結果が消える |
 | `STITCH_MAX_TOTAL_PIXELS` | `.env` | 1 リクエストの画像の、デコード後の合計画素数の上限。超えると 400 を返す |
-| `OPENCV_IO_MAX_IMAGE_PIXELS` | `backend/Dockerfile` (既定 4000 万) | 1 枚あたりの画素数の上限。OpenCV がメモリ確保前に拒否する |
+| `OPENCV_IO_MAX_IMAGE_PIXELS` | `.env` (未指定なら 4000 万) | 1 枚あたりの画素数の上限。OpenCV がメモリ確保前に拒否する |
 | `STITCH_MAX_IMAGES` | `.env` | 1 リクエストの枚数の上限 |
 | `RESULT_CACHE_MAX_ENTRIES` | `.env` | ダウンロード用にメモリに保持する合成結果の件数 |
 
@@ -49,7 +49,8 @@ BACKEND_MEMORY ≥ 0.1GB (待機時)
 1. ホストのメモリから、OS・nginx (256M)・cloudflared (128M) の分を引く。残りから `BACKEND_MEMORY` を決める。目安はホストメモリの半分。
 2. 上の式を満たす最大の `P` を `STITCH_MAX_TOTAL_PIXELS` にする。
 3. `STITCH_MAX_IMAGES` は「`P` ÷ 実際に使う画像 1 枚の画素数」前後にする。使うカメラが 2592×1728 (約 450 万画素) なら `P / 4.5M` 枚。
-4. `OPENCV_IO_MAX_IMAGE_PIXELS` は `P` 以下にする。カメラが 4000 万画素を超えない限り、Dockerfile の既定値のままでよい。変える場合は compose の `environment` で上書きする。
+4. `OPENCV_IO_MAX_IMAGE_PIXELS` は `P` 以下にする。カメラが 4000 万画素を超えない限り、既定値のままでよい。
+   - `P` より大きくすると、合計の上限で拒否する前に 1 枚目の巨大画像がデコードされ、そのメモリが確保されてしまう。
 
 ## 4. 機種ごとの推奨値
 
