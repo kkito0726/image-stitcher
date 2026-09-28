@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
+
+import structlog
 
 from src.domain.errors import ImageTooLargeError
 from src.domain.models import DecodedImage, StitchFailureReason, StitchMode
 from src.domain.ports import ImageCodec, ImageStitcher, StitchResultCache
+
+logger = structlog.stdlib.get_logger(__name__)
+
+
+def _elapsed_ms(start: float, end: float) -> int:
+    return round((end - start) * 1000)
 
 
 @dataclass(frozen=True)
@@ -45,14 +54,37 @@ class StitchImagesUseCase:
             ImageDecodeError: いずれかの画像がデコードできない場合。
             ImageTooLargeError: デコード後の合計画素数が上限を超える場合。
         """
+        mode = StitchMode.from_label(mode_label)
+        started = time.perf_counter()
         decoded = self._decode_within_budget(image_files)
-        result = self._stitcher.stitch(decoded, StitchMode.from_label(mode_label))
+        decoded_at = time.perf_counter()
+        result = self._stitcher.stitch(decoded, mode)
+        stitched_at = time.perf_counter()
+        # 低速機での処理時間の把握用 (Cloudflare の 100 秒制限の確認などに使う)
+        metrics = {
+            "mode": mode.value,
+            "image_count": len(decoded),
+            "total_pixels": sum(image.width * image.height for image in decoded),
+            "decode_ms": _elapsed_ms(started, decoded_at),
+            "stitch_ms": _elapsed_ms(decoded_at, stitched_at),
+        }
         if result.image is None:
+            failure = result.failure.value if result.failure is not None else None
+            logger.info("stitch.completed", stitched=False, failure=failure, **metrics)
             return StitchImagesOutput(preview_jpeg=None, result_id=None, failure=result.failure)
 
         result_id = self._cache.put(result.image)
         preview = self._codec.encode_preview_jpeg(
             result.image, self._preview_max_width, self._preview_quality
+        )
+        logger.info(
+            "stitch.completed",
+            stitched=True,
+            output_width=result.image.width,
+            output_height=result.image.height,
+            preview_ms=_elapsed_ms(stitched_at, time.perf_counter()),
+            preview_bytes=len(preview),
+            **metrics,
         )
         return StitchImagesOutput(preview_jpeg=preview, result_id=result_id, failure=None)
 

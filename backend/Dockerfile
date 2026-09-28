@@ -25,6 +25,8 @@ RUN addgroup --gid 1001 --system appgroup && \
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+COPY gunicorn.conf.py ./
+
 USER appuser
 EXPOSE 5000
 
@@ -37,11 +39,5 @@ ENV OPENCV_IO_MAX_IMAGE_PIXELS=40000000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-# ワーカーは 1 本。合成結果のプロセス内メモリキャッシュ (ダウンロード用) は
-# ワーカー間で共有されないため、複数ワーカーだと download が別ワーカーに当たって
-# 取り出せなくなる。同時リクエストは uvicorn worker のスレッドプールで捌く。
-CMD ["gunicorn", "src.main:app", \
-     "-k", "uvicorn.workers.UvicornWorker", \
-     "-w", "1", \
-     "-b", "0.0.0.0:5000", \
-     "--timeout", "300"]
+# ワーカー数・タイムアウト・ログ設定は gunicorn.conf.py を参照
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "src.main:app"]

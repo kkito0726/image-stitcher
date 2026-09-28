@@ -1,15 +1,15 @@
-import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, Response
 
 from src.domain.models import DownloadFormat
+from src.presentation.error_reason import ErrorReason
+from src.presentation.request_logging import record_reason
 from src.presentation.schemas import ErrorResponse
 from src.usecase.get_stitch_result import GetStitchResultUseCase
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
 _MEDIA_TYPES = {DownloadFormat.JPEG: "image/jpeg", DownloadFormat.PNG: "image/png"}
 
@@ -32,6 +32,7 @@ def download(
     usecase: GetStitchResultUseCase = request.app.state.get_result_usecase
     image = usecase.execute(result_id, fmt)
     if image is None:
+        record_reason(ErrorReason.RESULT_NOT_FOUND)
         return JSONResponse(
             status_code=404, content={"error": "結果が見つからないか有効期限切れです"}
         )

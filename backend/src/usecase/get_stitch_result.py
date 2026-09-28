@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import time
+
+import structlog
+
 from src.domain.models import DownloadFormat
 from src.domain.ports import ImageCodec, StitchResultCache
+
+logger = structlog.stdlib.get_logger(__name__)
 
 
 class GetStitchResultUseCase:
@@ -17,6 +23,15 @@ class GetStitchResultUseCase:
         image = self._cache.get(result_id)
         if image is None:
             return None
+        started = time.perf_counter()
         if fmt is DownloadFormat.PNG:
-            return self._codec.encode_png(image)
-        return self._codec.encode_jpeg(image, self._jpeg_quality)
+            encoded = self._codec.encode_png(image)
+        else:
+            encoded = self._codec.encode_jpeg(image, self._jpeg_quality)
+        logger.info(
+            "download.completed",
+            format=fmt.value,
+            bytes=len(encoded),
+            encode_ms=round((time.perf_counter() - started) * 1000),
+        )
+        return encoded

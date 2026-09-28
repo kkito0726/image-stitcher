@@ -1,3 +1,5 @@
+from typing import Any
+
 from src.domain.models import DecodedImage, DownloadFormat
 from src.usecase.get_stitch_result import GetStitchResultUseCase
 
@@ -60,3 +62,14 @@ class TestGetStitchResultUseCase:
         usecase = self._usecase({})
 
         assert usecase.execute("missing") is None
+
+    def test_エンコードした形式と所要時間とサイズをログに出す(
+        self, log_events: list[dict[str, Any]]
+    ) -> None:
+        self._usecase({"abc": FakeImage("full")}).execute("abc", DownloadFormat.PNG)
+
+        [event] = [e for e in log_events if e["event"] == "download.completed"]
+        assert event["format"] == "png"
+        assert event["bytes"] == len(b"png:full")
+        assert isinstance(event["encode_ms"], int)
+        assert "abc" not in event.values()
