@@ -38,7 +38,7 @@ structlog と標準 `logging` は `ProcessorFormatter` で統合しているた�
 
 ### 3.1 共通フィールド
 
-JSON では、下表のキーをこの順で先頭に並べる (`timestamp` が常に先頭)。
+JSON では `timestamp`, `level`, `method`, `status`, `event`, `logger`, `request_id`, `cf_ray` の順で先頭に並べる (持っているキーだけ)。`timestamp` が常に先頭で、リクエストのログは `method` / `status` が `level` の直後に来る。
 
 | キー | 例 | 備考 |
 |---|---|---|
@@ -88,16 +88,16 @@ JSON では、下表のキーをこの順で先頭に並べる (`timestamp` が�
 合成リクエスト 1 件 (`request_id` で束ねる):
 
 ```json
-{"timestamp": "2026-09-27T01:23:22.127Z", "level": "info", "event": "request.received", "logger": "request_logging", "request_id": "demo-1", "method": "POST", "path": "/stitch", "query": "", "content_length": "5575564", "user_agent": "Mozilla/5.0 ...", "headers": {"host": "[REDACTED]", "user-agent": "Mozilla/5.0 ...", "cookie": "[REDACTED]", "content-type": "multipart/form-data; boundary=..."}}
+{"timestamp": "2026-09-27T01:23:22.127Z", "level": "info", "method": "POST", "event": "request.received", "logger": "request_logging", "request_id": "demo-1", "path": "/stitch", "query": "", "content_length": "5575564", "user_agent": "Mozilla/5.0 ...", "headers": {"host": "[REDACTED]", "user-agent": "Mozilla/5.0 ...", "cookie": "[REDACTED]", "content-type": "multipart/form-data; boundary=..."}}
 {"timestamp": "2026-09-27T01:23:22.232Z", "level": "info", "event": "stitch.received", "logger": "src.presentation.routers.stitch", "request_id": "demo-1", "mode": "Scans", "image_count": 2, "upload_bytes": 5575104, "files": [{"field": "images", "content_type": "image/jpeg", "size": 2782365, "ext": ".jpg", "filename_len": 12}, {"...": "..."}]}
 {"timestamp": "2026-09-27T01:23:23.498Z", "level": "info", "event": "stitch.completed", "logger": "src.usecase.stitch_images", "request_id": "demo-1", "stitched": true, "output_width": 2596, "output_height": 2478, "preview_ms": 48, "preview_bytes": 429732, "mode": "Scans", "image_count": 2, "total_pixels": 8957952, "decode_ms": 60, "stitch_ms": 1150}
-{"timestamp": "2026-09-27T01:23:23.503Z", "level": "info", "event": "request.completed", "logger": "request_logging", "request_id": "demo-1", "method": "POST", "path": "/stitch", "status": 200, "duration_ms": 1376, "content_length": "5575564", "user_agent": "Mozilla/5.0 ..."}
+{"timestamp": "2026-09-27T01:23:23.503Z", "level": "info", "method": "POST", "status": 200, "event": "request.completed", "logger": "request_logging", "request_id": "demo-1", "path": "/stitch", "duration_ms": 1376, "content_length": "5575564", "user_agent": "Mozilla/5.0 ..."}
 ```
 
 入力エラー時は `request.completed` が `warning` になり、`reason` が付く:
 
 ```json
-{"timestamp": "...", "level": "warning", "event": "request.completed", "logger": "request_logging", "request_id": "...", "method": "POST", "path": "/stitch", "status": 400, "reason": "too_many_images", "duration_ms": 3, "...": "..."}
+{"timestamp": "...", "level": "warning", "method": "POST", "status": 400, "event": "request.completed", "logger": "request_logging", "request_id": "...", "path": "/stitch", "reason": "too_many_images", "duration_ms": 3, "...": "..."}
 ```
 
 ## 4. request_id

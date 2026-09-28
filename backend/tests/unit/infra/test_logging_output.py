@@ -68,3 +68,15 @@ def test_アクセスログは出さない(capsys: pytest.CaptureFixture[str]) -
     logging.getLogger("uvicorn.access").info('127.0.0.1:5000 - "GET / HTTP/1.1" 200')
 
     assert _json_lines(capsys) == []
+
+
+def test_methodとstatusはlevelの直後に並べる(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging(LogSettings(level=logging.INFO, format=LogFormat.JSON))
+
+    structlog.stdlib.get_logger("request_logging").info(
+        "request.completed", path="/stitch", status=200, method="POST", duration_ms=3
+    )
+
+    [line] = _json_lines(capsys)
+
+    assert list(line)[:6] == ["timestamp", "level", "method", "status", "event", "logger"]

@@ -60,8 +60,18 @@ _SHARED_PROCESSORS: list[Any] = [
 ]
 
 
-# JSON で先頭に並べるキー。時刻から読めるよう timestamp を最初にする
-_LEADING_KEYS = ("timestamp", "level", "event", "logger", "request_id", "cf_ray")
+# JSON で先頭に並べるキー (持っているものだけ)。時刻から読めるよう timestamp を最初にし、
+# リクエストのログは method / status を level の直後に置いて一目で分かるようにする
+_LEADING_KEYS = (
+    "timestamp",
+    "level",
+    "method",
+    "status",
+    "event",
+    "logger",
+    "request_id",
+    "cf_ray",
+)
 
 
 def _leading_keys_first(
