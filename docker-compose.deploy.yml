@@ -77,7 +77,7 @@ services:
           memory: 64M
 
   cloudflared:
-    image: cloudflare/cloudflared:2026.9.3
+    image: cloudflare/cloudflared:2026.10.0
     logging: *default-logging
     restart: unless-stopped
     # トンネルの Public Hostname は Cloudflare ダッシュボードで
