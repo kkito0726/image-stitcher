@@ -34,7 +34,7 @@ export const FileUploader = () => {
 
   const navigateToCrop = (imageSrc: string) => {
     setCropImageSrc(imageSrc);
-    router.push("/crop");
+    router.push("/crop/");
   };
 
   const handleCropResult = () => {
