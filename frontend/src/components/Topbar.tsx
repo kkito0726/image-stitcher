@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const Topbar = () => {
   return (
-    <nav className="sticky top-0 z-50 flex items-center justify-between w-full px-6 py-3 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
+    <nav className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between w-full px-4 sm:px-6 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
       <Link
         href="/"
         className="group flex items-center gap-2 no-underline transition-all duration-200"
@@ -45,7 +45,7 @@ export const Topbar = () => {
         </div>
 
         {/* Logo Text */}
-        <span className="font-semibold text-[15px] tracking-tight">
+        <span className="font-semibold text-sm sm:text-[15px] tracking-tight whitespace-nowrap">
           <span className="text-[var(--text-primary)] group-hover:text-[var(--text-secondary)] transition-colors">
             Panorama Image
           </span>
