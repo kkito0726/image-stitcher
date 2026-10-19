@@ -18,7 +18,7 @@ RUN npm run build
 # ============================================
 # Stage 3: Production (nginx)
 # ============================================
-FROM nginx:1.30.5-alpine AS production
+FROM nginx:1.30.6-alpine AS production
 
 # Create non-root user
 RUN addgroup -g 1001 -S appgroup && \
