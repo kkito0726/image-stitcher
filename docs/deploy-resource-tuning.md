@@ -87,7 +87,9 @@ STITCH_MAX_TOTAL_PIXELS=160000000
 
 N100 (16GB) で Minecraft サーバーと同居させる場合は、`.env.deploy.example` の既定の値をそのまま使う。Pi 5 (4GB) の値は `.env.deploy.example` にコメントアウトして残してある。
 
-- メモリの内訳: OS 約 1.5GB、nginx と cloudflared で 0.4GB、backend 3GB。残りの約 10GB を Minecraft に回せる (JVM の `-Xmx` は 8G 程度まで。JVM はヒープ外にも 1〜2GB 使うため)。
+- メモリの内訳: OS (Ubuntu Server + Docker) 約 0.8GB、nginx と cloudflared で 0.4GB、backend 3GB。残りの約 11GB を Minecraft とファイルキャッシュに回せる。
+  - OS の実際の使用量は、Docker を起動して Minecraft を止めた状態の `free -h` の `used` で確認する。
+  - JVM の `-Xmx` は 8G (多くても 9G) 程度にする。JVM はヒープ外にも 1〜2GB 使うためと、残りをワールドデータのファイルキャッシュに使わせてチャンク読み込みを速くするため。
 - CPU: N100 は 4 コア 4 スレッドしかない。backend を 2.0 に抑え、合成中も Minecraft のメインスレッドが CPU を取れるようにする。
 - コア数を絞った分、合成時間は単独運用より延びる。§6 の手順で、上限いっぱいの 13 枚が 100 秒を十分下回ることを確認する。
 
