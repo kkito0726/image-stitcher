@@ -4,7 +4,7 @@
 - 対象: `docker-compose.deploy.yml` の backend に渡す、メモリと入力上限の設定
 - 関連: [.env.deploy.example](../.env.deploy.example)、[docker-compose.deploy.yml](../docker-compose.deploy.yml)
 
-現在は Raspberry Pi 5 (4GB) で `.env.deploy.example` の既定の構成を使っている。このガイドは、上位機種へ移行するときに設定値を決める手順と、機種ごとの推奨値をまとめたもの。
+現在は Intel N100 (16GB) で Minecraft サーバーと同居させ、`.env.deploy.example` の既定の構成を使っている。このガイドは、機種や同居構成を変えるときに設定値を決める手順と、機種ごとの推奨値をまとめたもの。
 
 ## 1. 関係する設定
 
@@ -56,9 +56,10 @@ BACKEND_MEMORY ≥ 0.1GB (待機時)
 
 | 機種 | `BACKEND_MEMORY` | `STITCH_MAX_TOTAL_PIXELS` | `RESULT_CACHE_MAX_ENTRIES` | `STITCH_MAX_IMAGES` | 最悪ケースの見積り | 2592×1728 の枚数 |
 |------|------|------|------|------|------|------|
-| Raspberry Pi 5 (4GB) ※現行 | 2G | 40000000 | 2 | 15 | 1.54GB | 8 枚 |
+| Raspberry Pi 5 (4GB) | 2G | 40000000 | 2 | 15 | 1.54GB | 8 枚 |
 | Raspberry Pi 5 (8GB) | 4G | 80000000 | 3 | 20 | 3.22GB | 17 枚 |
 | Intel N100 (16GB) | 8G | 160000000 | 4 | 30 | 6.82GB | 30 枚 (枚数上限) |
+| Intel N100 (16GB) + Minecraft 同居 ※現行 | 3G | 60000000 | 3 | 15 | 2.44GB | 13 枚 |
 
 見積りは §3 の式で計算した値。Pi 5 (4GB) なら 0.1 + 30×0.04 + 3×0.04×2 = 1.54GB。
 
@@ -73,7 +74,22 @@ STITCH_MAX_IMAGES=20
 STITCH_MAX_TOTAL_PIXELS=80000000
 ```
 
-N100 (16GB) は `.env.deploy.example` のコメントアウトされた例をそのまま使う。
+N100 (16GB) を単独で使う場合の `.env` の例:
+
+```dotenv
+BACKEND_CPUS=3.5
+BACKEND_MEMORY=8G
+RESULT_CACHE_MAX_ENTRIES=4
+RESULT_CACHE_TTL_SECONDS=600
+STITCH_MAX_IMAGES=30
+STITCH_MAX_TOTAL_PIXELS=160000000
+```
+
+N100 (16GB) で Minecraft サーバーと同居させる場合は、`.env.deploy.example` の既定の値をそのまま使う。Pi 5 (4GB) の値は `.env.deploy.example` にコメントアウトして残してある。
+
+- メモリの内訳: OS 約 1.5GB、nginx と cloudflared で 0.4GB、backend 3GB。残りの約 10GB を Minecraft に回せる (JVM の `-Xmx` は 8G 程度まで。JVM はヒープ外にも 1〜2GB 使うため)。
+- CPU: N100 は 4 コア 4 スレッドしかない。backend を 2.0 に抑え、合成中も Minecraft のメインスレッドが CPU を取れるようにする。
+- コア数を絞った分、合成時間は単独運用より延びる。§6 の手順で、上限いっぱいの 13 枚が 100 秒を十分下回ることを確認する。
 
 ## 5. 注意点
 
